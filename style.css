@@ -215,3 +215,16 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 .vu-special-row label{flex-direction:row;align-items:center}
 .vu-special-row input[type=number]{max-width:170px}
 .vu-profit-result{font-weight:700}
+
+/* Compact pricing catalogue: only the selected product expands */
+#pricing-categories .vu-order-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));gap:12px;align-items:start}
+#pricing-categories .vu-pricing-item{display:block;padding:0;overflow:hidden}
+.vu-price-card-header{padding:14px}
+.vu-price-card-main{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px}
+.vu-price-card-main .vu-order-identity{grid-column:1/-1}
+.vu-price-card-amount{font-size:1.25rem}
+.vu-price-edit{width:auto;padding:8px 12px;font-size:.9rem}
+.vu-price-editor{padding:14px;border-top:1px solid rgba(255,255,255,.12);display:grid;gap:14px}
+.vu-price-editor[hidden]{display:none!important}
+.vu-price-editor>label{max-width:none;width:100%}
+.vu-price-editor .vu-profit-controls{padding:0}

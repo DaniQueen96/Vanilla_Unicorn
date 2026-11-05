@@ -54,6 +54,18 @@ document.addEventListener("vu:pricing-ready",()=>{
  document.dispatchEvent(new CustomEvent("vu:prices-updated",{detail:sharedPrices}));
  if(currentCosting)document.dispatchEvent(new CustomEvent("vu:costing-updated",{detail:currentCosting}));
 });
+document.addEventListener("vu:seed-prices",async event=>{
+ if(auth.currentUser?.uid!==OWNER_UID)return;
+ const values=event.detail;
+ if(!values||typeof values!=="object")return;
+ const valid=Object.fromEntries(Object.entries(values).filter(([key,value])=>key.startsWith("Cocktails::")&&typeof value==="number"&&Number.isFinite(value)&&value>=0));
+ if(!Object.keys(valid).length)return;
+ const status=document.getElementById("pricing-status");
+ try{
+  await setDoc(pricingDoc,{prices:valid},{merge:true});
+  if(status)status.textContent="Calculated cocktail prices saved for all devices.";
+ }catch(error){if(status)status.textContent="Automatic price saving failed: "+error.message;}
+});
 document.addEventListener("vu:save-price",async event=>{
  if(auth.currentUser?.uid!==OWNER_UID)return;
  const {key,value}=event.detail||{};
@@ -114,7 +126,7 @@ onAuthStateChanged(auth, (user) => {
   if (owner && !appLoaded) {
     appLoaded = true;
     const script = document.createElement("script");
-    script.src = "app.js?v=20261105-profit-controls1";
+    script.src = "app.js?v=20261105-auto-pricing2";
     document.body.append(script);
   }
   if (user && !owner) signOut(auth);
