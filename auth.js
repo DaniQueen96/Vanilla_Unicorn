@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
 // Firebase web app identifiers are public; passwords and admin credentials are never stored here.
@@ -18,6 +18,7 @@ const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
 let stopStaffListener = null;
 let stopIncidentListener = null;
+let costingInitialized = false;
 let incidentsInitialized = false;
 let staffInitialized = false;
 let eventsInitialized = false;
@@ -56,6 +57,8 @@ onAuthStateChanged(auth, (user) => {
   app.classList.toggle("hidden", !owner);
   logout.classList.toggle("hidden", !owner);
   document.getElementById("signed-in-label").textContent = owner ? "VU Owner" : "Drinks · Events · Bookings";
+  if (owner && !costingInitialized) { costingInitialized = true; setupCosting(); }
+  if (!owner) costingInitialized = false;
   if (owner && !incidentsInitialized) { incidentsInitialized = true; setupIncidents(); }
   if (!owner && stopIncidentListener) { stopIncidentListener(); stopIncidentListener = null; incidentsInitialized = false; document.getElementById("incident-list").replaceChildren(); }
   if (owner && !eventsInitialized) { eventsInitialized = true; setupEvents(); }
@@ -230,4 +233,58 @@ function setupIncidents() {
     try{await addDoc(collection(db,"managementIncidents"),data);form.reset();message.textContent="Private report saved.";}
     catch(error){message.textContent="Save failed: "+error.message;}
   });
+}
+
+
+// Recipe data from the owner's in-city list. The trailing ×2 Cocktail Name denotes yield.
+async function setupCosting() {
+  const status=document.getElementById("costing-status");
+  const pricesEl=document.getElementById("costing-prices");
+  const recipesEl=document.getElementById("costing-recipes");
+  const defaults=[
+    ["Whiskey Sour",1,["Lemon","Whiskey","Egg","Sugar"]],
+    ["Pina Colada",2,["Rum","Pineapple","Coconut"]],
+    ["Bloody Mary",1,["Lemon","Hot Pepper","Salt","Vodka","Tomato Juice"]],
+    ["Shirley Temple (N/A)",2,["Sprite","Cherry","Grenadine"]],
+    ["Rainbow Rush",2,["Sprite","Skittles","Vodka"]],
+    ["Mojito",1,["Sprite","Sugar","Lime","Rum","Mint Leaf"]],
+    ["Old Fashioned",1,["Whiskey","Orange","Sugar","Angostura Bitters"]],
+    ["Margarita",1,["Lime","Tequila","Orange","Sugar"]],
+    ["Salty Pigeon",1,["Pigeon Milk","Vodka","Coco Powder","Salt"]]
+  ];
+  const ref=doc(db,"ownerSettings","recipeCosting");
+  let state={prices:{},recipes:defaults.map(([name,yieldCount,ingredients])=>({name,yieldCount,ingredients:ingredients.map(name=>({name,qty:1}))}))};
+  try{const snap=await getDoc(ref);if(snap.exists()){const d=snap.data();if(d.prices&&d.recipes)state={prices:d.prices,recipes:d.recipes};}}catch(e){status.textContent="Unable to load saved prices: "+e.message;}
+  const money=n=>Number.isFinite(n)?"$"+n.toFixed(2):"Not priced";
+  const ingredients=()=>[...new Set(state.recipes.flatMap(r=>r.ingredients.map(i=>i.name)))].sort((a,b)=>a.localeCompare(b));
+  let pending=false;
+  async function save(){if(pending)return;pending=true;status.textContent="Saving…";try{await setDoc(ref,{prices:state.prices,recipes:state.recipes,updatedAt:serverTimestamp()});status.textContent="Saved to your private owner account.";}catch(e){status.textContent="Save failed: "+e.message;}finally{pending=false;}}
+  function field(label,value,change,type="text"){const l=document.createElement("label");l.textContent=label;const input=document.createElement("input");input.type=type;input.value=value;input.addEventListener("change",()=>change(input.value));l.append(input);return l;}
+  function render(){
+    pricesEl.replaceChildren();recipesEl.replaceChildren();
+    for(const name of ingredients()){
+      const row=document.createElement("div");row.className="item";
+      row.append(field(name+" — purchase cost per unit ($)",state.prices[name]??"",v=>{if(v==="")delete state.prices[name];else if(Number.isFinite(Number(v))&&Number(v)>=0)state.prices[name]=Number(v);save();render()},"number"));
+      pricesEl.append(row);
+    }
+    state.recipes.forEach((recipe,index)=>{
+      const box=document.createElement("article");box.className="item costing-recipe";
+      const heading=document.createElement("h3");heading.textContent=recipe.name;box.append(heading);
+      box.append(field("Servings produced",recipe.yieldCount,v=>{const n=Number(v);if(Number.isInteger(n)&&n>0){recipe.yieldCount=n;save();render()}},"number"));
+      const ingredientWrap=document.createElement("div");ingredientWrap.className="costing-ingredients";
+      recipe.ingredients.forEach((item,j)=>{
+        const line=document.createElement("div");line.className="costing-ingredient";
+        line.append(field("Ingredient",item.name,v=>{item.name=v.trim();save();render()}));
+        line.append(field("Quantity",item.qty,v=>{const n=Number(v);if(Number.isFinite(n)&&n>0){item.qty=n;save();render()}},"number"));
+        const remove=document.createElement("button");remove.type="button";remove.textContent="Remove";remove.onclick=()=>{recipe.ingredients.splice(j,1);save();render()};line.append(remove);ingredientWrap.append(line);
+      });box.append(ingredientWrap);
+      const add=document.createElement("button");add.type="button";add.textContent="Add ingredient";add.onclick=()=>{recipe.ingredients.push({name:"New ingredient",qty:1});save();render()};box.append(add);
+      const missing=recipe.ingredients.filter(i=>state.prices[i.name]===undefined);
+      const cost=recipe.ingredients.reduce((sum,i)=>sum+(Number(state.prices[i.name])||0)*Number(i.qty),0);
+      const total=document.createElement("p");total.className="costing-total";
+      total.textContent=missing.length?"Awaiting store prices: "+missing.map(i=>i.name).join(", "):"Batch cost: "+money(cost)+" · Per serving: "+money(cost/recipe.yieldCount);
+      box.append(total);recipesEl.append(box);
+    });
+  }
+  render();
 }
