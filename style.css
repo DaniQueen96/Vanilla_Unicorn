@@ -52,3 +52,42 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 #packages .vu-item-icon{width:76px;height:76px;padding:8px}
 #packages .item{min-height:100px}
 @media(min-width:900px){#drink-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Vanilla Unicorn owner management suite — November redesign */
+#protected-app main{max-width:1500px;display:grid;grid-template-columns:235px minmax(0,1fr);gap:32px;align-items:start;padding-top:28px}
+#protected-app nav{position:sticky;top:20px;display:flex;flex-direction:column;gap:5px;padding:16px;background:linear-gradient(160deg,#241426,#160e1a);border:1px solid #50304a;border-radius:20px;max-height:calc(100vh - 40px);overflow:auto}
+#protected-app nav .nav-heading{font-size:10px;letter-spacing:2.5px;color:#d78cbd;font-weight:800;padding:10px 12px 14px}
+#protected-app nav button{border:0;background:transparent;text-align:left;padding:12px 13px;border-radius:10px;font-weight:600;color:#d6bfd0}
+#protected-app nav button:hover,#protected-app nav button.active{background:#733054;color:white;box-shadow:inset 3px 0 #ffa7d4}
+#protected-app .workspace{min-width:0}
+#protected-app .view{max-width:1100px;min-width:0}
+#protected-app .view.hidden{display:none}
+#protected-app .head{padding:20px 0 12px;border-bottom:1px solid #3d293c;margin-bottom:26px}
+#protected-app .head h2{font-size:clamp(26px,3vw,38px);letter-spacing:-.8px;margin:8px 0 10px}
+#protected-app .head p{max-width:700px;line-height:1.6}
+.vu-home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+.vu-home-grid button{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:12px;min-height:175px;padding:24px;border:1px solid #673957;border-radius:18px;background:linear-gradient(140deg,#2c182b,#1a111d);transition:transform .15s,border-color .15s}
+.vu-home-grid button:hover{transform:translateY(-3px);border-color:#ed83bd}
+.vu-home-grid button span{font-size:31px}.vu-home-grid button strong{font-size:19px}.vu-home-grid button small{font-size:13px;line-height:1.5;letter-spacing:0;font-weight:400;color:#c9aabc}
+.vu-home-note{border:1px solid #53314a;border-radius:16px;margin-top:25px;padding:20px 24px;background:#241724}.vu-home-note p{margin-bottom:0;line-height:1.5}
+.vu-editor{border:1px solid #62405b;border-radius:16px;background:#211522;margin-bottom:30px}
+.vu-editor>summary{cursor:pointer;padding:20px 24px;font-weight:800;list-style:none}
+.vu-editor>summary::-webkit-details-marker{display:none}.vu-editor>summary:before{content:"＋";color:#f3a0cd;margin-right:12px}
+.vu-editor[open]>summary:before{content:"－"}.vu-editor>summary span{font-size:12px;font-weight:400;color:#c8a8c0;margin-left:10px}
+.vu-editor #costing-prices{padding:0 18px 18px}
+#costing-recipes{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));align-items:start;gap:16px}
+#costing-recipes .costing-recipe{display:block;background:linear-gradient(145deg,#291729,#1b121e);border:1px solid #603b57;border-radius:18px;overflow:hidden}
+#costing-recipes .costing-recipe[open]{grid-column:1/-1;border-color:#d76aa6}
+#costing-recipes .cocktail-heading{cursor:pointer;display:flex;gap:18px;align-items:center;padding:22px;list-style:none}
+#costing-recipes .cocktail-heading::-webkit-details-marker{display:none}
+#costing-recipes .cocktail-heading .vu-item-icon{width:78px;height:78px}
+#costing-recipes .cocktail-heading span{display:flex;flex-direction:column;gap:8px;min-width:0}
+#costing-recipes .cocktail-heading strong{font-size:20px}
+#costing-recipes .cocktail-heading small{font-size:13px;letter-spacing:0;color:#eab0d1}
+#costing-recipes .cocktail-editor{border-top:1px solid #58364e;padding:24px}
+#costing-recipes .cocktail-editor label{max-width:500px}
+#costing-recipes .cocktail-pricing{background:#382039;border:1px solid #724767;border-radius:14px;padding:18px;margin-top:20px}
+#costing-recipes .cocktail-pricing strong{display:block;color:#ffd0e8;line-height:1.6}
+#costing-recipes .cocktail-pricing input{accent-color:#f08abf}
+#packages #package-options,#drinks #drink-list{grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+@media(max-width:800px){#protected-app main{display:block;padding:12px 16px}#protected-app nav{position:static;display:flex;flex-direction:row;flex-wrap:nowrap;overflow:auto;max-height:none;margin-bottom:18px;padding:9px;border-radius:13px}#protected-app nav button{white-space:nowrap}#protected-app nav .nav-heading{display:none}#costing-recipes{grid-template-columns:1fr}}
