@@ -126,7 +126,7 @@ function setupOrderCalculator(data){
  let saved={};
  let costing=null;
  const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
- const getRecipe=item=>costing?.recipes?.find(r=>norm(r.name)===norm(item.name)||norm(r.name).replace(/na$/,"")===norm(item.name));
+ const getRecipe=item=>costing?.recipes?.find(r=>norm(r.name)===norm(item.name)||norm(r.name).replace(/na$/,"")===norm(item.name)||norm(r.name).replace(/na$/,"").replace(/\(na\)$/,"")===norm(item.name)||norm(r.name).startsWith(norm(item.name)));
  const unitCost=item=>{
   const recipe=getRecipe(item);if(!recipe||!costing?.prices)return null;
   const yieldCount=Number(recipe.yieldCount);if(!Number.isFinite(yieldCount)||yieldCount<=0)return null;
@@ -142,7 +142,7 @@ function setupOrderCalculator(data){
  const suggestedFor=e=>{const cost=unitCost(e.item),m=marginFor(e);return cost===null||m<10||m>90?null:Math.ceil((cost/(1-m/100))/5)*5;};
  let pricesLoaded=false,costsLoaded=false,seeded=new Set();
  const seedSuggested=()=>{
-  if(!pricesLoaded||!costsLoaded)return;
+  if(!pricesLoaded||!costsLoaded||!costing?.recipes?.length)return;
   const updates={};
   for(const e of entries){
    if(e.group!=="Cocktails"||Object.hasOwn(saved,e.key)||seeded.has(e.key))continue;

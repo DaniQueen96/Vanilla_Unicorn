@@ -36,8 +36,7 @@ const pricingDoc = doc(db,"businessSettings","sellingPrices");
 function beginPricingSync(){
  if(stopPricingListener)return;
  stopPricingCostingListener=onSnapshot(doc(db,"ownerSettings","recipeCosting"),snapshot=>{
-  currentCosting=snapshot.exists()?snapshot.data():null;
-  document.dispatchEvent(new CustomEvent("vu:costing-updated",{detail:currentCosting}));
+  if(snapshot.exists()&&snapshot.data()?.recipes?.length){currentCosting=snapshot.data();document.dispatchEvent(new CustomEvent("vu:costing-updated",{detail:currentCosting}));}
  });
  stopPricingListener=onSnapshot(pricingDoc,snapshot=>{
   const raw=snapshot.exists()?snapshot.data().prices:{};
@@ -126,7 +125,7 @@ onAuthStateChanged(auth, (user) => {
   if (owner && !appLoaded) {
     appLoaded = true;
     const script = document.createElement("script");
-    script.src = "app.js?v=20261105-single-pricing3";
+    script.src = "app.js?v=20261105-prices-fix4";
     document.body.append(script);
   }
   if (user && !owner) signOut(auth);
@@ -324,6 +323,12 @@ async function setupCosting() {
   for(const recipe of state.recipes)for(const ingredient of recipe.ingredients)ingredient.name=canonicalNames[ingredient.name]||ingredient.name;
   for(const [oldName,newName] of Object.entries(canonicalNames)){if(state.prices[oldName]!==undefined&&state.prices[newName]===undefined)state.prices[newName]=state.prices[oldName];delete state.prices[oldName];}
   for(const [name,price] of Object.entries(storePrices))if(state.prices[name]===undefined)state.prices[name]=price;
+  // Publish effective recipe costs even when the Firestore costing document has not been created yet.
+  // This supplies the order calculator with the same defaults shown in Recipe & Store Costs.
+  currentCosting={prices:state.prices,recipes:state.recipes};
+  document.dispatchEvent(new CustomEvent("vu:costing-updated",{detail:currentCosting}));
+  if(!Object.keys(state.prices).length)status.textContent="Ingredient prices are missing.";
+
   const money=n=>Number.isFinite(n)?"$"+n.toFixed(2):"Not priced";
   const iconBase="https://p17.admin.opfw.me/images/icons/items/";
   const iconAliases={"Mint Leaves":"mint_leaves","Chili Peppers":"chili_peppers","Tomato Juice":"tomato_juice","Pigeon Milk":"pigeon_milk","Cocoa Powder":"cocoa_powder","Angostura Bitters":"angostura_bitters"};
@@ -339,7 +344,7 @@ async function setupCosting() {
   }
   const ingredients=()=>storeItems.map(([name])=>name);
   let saveChain=Promise.resolve();
-  function save(){const snapshot=JSON.parse(JSON.stringify(state));status.textContent="Saving…";saveChain=saveChain.catch(()=>{}).then(async()=>{try{await setDoc(ref,{...snapshot,updatedAt:serverTimestamp()});status.textContent="Saved to your private owner account.";}catch(e){status.textContent="Save failed: "+e.message;}});return saveChain;}
+  function save(){const snapshot=JSON.parse(JSON.stringify(state));currentCosting=snapshot;document.dispatchEvent(new CustomEvent("vu:costing-updated",{detail:currentCosting}));status.textContent="Saving…";saveChain=saveChain.catch(()=>{}).then(async()=>{try{await setDoc(ref,{...snapshot,updatedAt:serverTimestamp()});status.textContent="Saved to your private owner account.";}catch(e){status.textContent="Save failed: "+e.message;}});return saveChain;}
   function field(label,value,change,type="text"){const l=document.createElement("label");l.textContent=label;const input=document.createElement("input");input.type=type;input.value=value;input.addEventListener("change",()=>change(input.value));l.append(input);return l;}
   function render(){
     pricesEl.replaceChildren();recipesEl.replaceChildren();
