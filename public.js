@@ -5,5 +5,5 @@ try{const app=initializeApp({apiKey:"AIzaSyBGCbNm6DFrHhqeUOy6DtPVaLziFt33JNw",au
 // Open the existing secure owner dashboard within the same site, preserving its independent styling and auth.
 const portal=document.getElementById("staff-portal"),portalLink=document.getElementById("staff-portal-link"),portalFrame=document.getElementById("staff-portal-frame");
 function showPortal(){if(!portalFrame.src)portalFrame.src=portalFrame.dataset.src;portal.hidden=false;document.body.style.overflow="hidden";document.getElementById("staff-portal-close").focus()}
-function hidePortal(){portal.hidden=true;document.body.style.overflow="";portalLink.focus()}
-portalLink.addEventListener("click",e=>{e.preventDefault();showPortal()});document.getElementById("staff-nav-link").addEventListener("click",e=>{e.preventDefault();nav.classList.remove("open");toggle.setAttribute("aria-expanded","false");showPortal()});document.getElementById("staff-portal-close").addEventListener("click",hidePortal);document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!portal.hidden)hidePortal()});
+function hidePortal(){portal.hidden=true;document.body.style.overflow="";document.getElementById("staff-nav-link").focus()}
+document.getElementById("staff-nav-link").addEventListener("click",e=>{e.preventDefault();nav.classList.remove("open");toggle.setAttribute("aria-expanded","false");showPortal()});document.getElementById("staff-portal-close").addEventListener("click",hidePortal);document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!portal.hidden)hidePortal()});
