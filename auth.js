@@ -3,7 +3,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from
 
 // Firebase web app identifiers are public; passwords and admin credentials are never stored here.
 const firebaseConfig = {
-  apiKey: "AIzaSyBGcbNm6DrFhHqeU0y6DtPVaLziFt33JNw",
+  apiKey: "AIzaSyBGCbNm6DFrHhqeUOy6DtPVaLziFt33JNw",
   authDomain: "vanilla-unicorn-e415a.firebaseapp.com",
   projectId: "vanilla-unicorn-e415a",
   storageBucket: "vanilla-unicorn-e415a.firebasestorage.app",
