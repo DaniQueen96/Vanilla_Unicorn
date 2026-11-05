@@ -124,9 +124,22 @@ function setupOrderCalculator(data){
  ];
  const extra=drinks.filter(x=>!groups.some(g=>g[1].some(y=>y.id===x.id)));if(extra.length)groups.push(["More Drinks",extra]);
  let saved={};
- let costing=null;
+ const fallbackPrices={Whiskey:65,Rum:78,Vodka:50,Tequila:25,Absinthe:52,Beer:12,Cider:18,Koka:10,Frezzi:10,Sprunk:10,Tanga:10,"Sweet Tea":12,"Green Cow":20,"Tomato Juice":15,"Pigeon Milk":32,"Almond Milk":28,Water:4,"Angostura Bitters":32,Grenadine:26,Sugar:6,Salt:8,"Cocoa Powder":10,Lemon:6,Lime:6,Orange:8,Cherry:4,Pineapple:14,Coconut:10,"Mint Leaves":6,Olives:14,"Chili Peppers":6,Eggs:8,"Hot Dog":10,"Ham Sandwich":16,Nachos:10,"Salted Peanuts":12,"S'mores":20,Skittles:10};
+ const fallbackRecipes=[
+ ["Whiskey Sour",1,["Lemon","Whiskey","Eggs","Sugar"]],
+ ["Pina Colada",2,["Rum","Pineapple","Coconut"]],
+ ["Bloody Mary",1,["Lemon","Chili Peppers","Salt","Vodka","Tomato Juice"]],
+ ["Shirley Temple",2,["Sprunk","Cherry","Grenadine"]],
+ ["Rainbow Rush",2,["Sprunk","Skittles","Vodka"]],
+ ["Mojito",1,["Sprunk","Sugar","Lime","Rum","Mint Leaves"]],
+ ["Old Fashioned",1,["Whiskey","Orange","Sugar","Angostura Bitters"]],
+ ["Margarita",1,["Lime","Tequila","Orange","Sugar"]],
+ ["Salty Pigeon",1,["Pigeon Milk","Vodka","Cocoa Powder","Salt"]],
+ ["Virgin Mojito",1,["Sprunk","Sugar","Lime","Mint Leaves"]]
+ ].map(([name,yieldCount,ingredients])=>({name,yieldCount,ingredients:ingredients.map(name=>({name,qty:1}))}));
+ let costing={prices:fallbackPrices,recipes:fallbackRecipes};
  const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
- const getRecipe=item=>costing?.recipes?.find(r=>norm(r.name)===norm(item.name)||norm(r.name).replace(/na$/,"")===norm(item.name)||norm(r.name).replace(/na$/,"").replace(/\(na\)$/,"")===norm(item.name)||norm(r.name).startsWith(norm(item.name)));
+ const getRecipe=item=>costing?.recipes?.find(r=>norm(r.name)===norm(item.name)||norm(r.name).startsWith(norm(item.name)));
  const unitCost=item=>{
   const recipe=getRecipe(item);if(!recipe||!costing?.prices)return null;
   const yieldCount=Number(recipe.yieldCount);if(!Number.isFinite(yieldCount)||yieldCount<=0)return null;
@@ -140,12 +153,12 @@ function setupOrderCalculator(data){
  };
  const marginFor=e=>Number(saved["__margin::"+e.key]??saved["__defaultMargin"]??30);
  const suggestedFor=e=>{const cost=unitCost(e.item),m=marginFor(e);return cost===null||m<10||m>90?null:Math.ceil((cost/(1-m/100))/5)*5;};
- let pricesLoaded=false,costsLoaded=false,seeded=new Set();
+ let pricesLoaded=false,costsLoaded=true,seeded=new Set();
  const seedSuggested=()=>{
   if(!pricesLoaded||!costsLoaded||!costing?.recipes?.length)return;
   const updates={};
   for(const e of entries){
-   if(e.group!=="Cocktails"||Object.hasOwn(saved,e.key)||seeded.has(e.key))continue;
+   if(e.group!=="Cocktails"||(Object.hasOwn(saved,e.key)&&saved[e.key]!==null)||seeded.has(e.key))continue;
    const amount=suggestedFor(e);
    if(amount===null)continue;
    updates[e.key]=amount;seeded.add(e.key);
@@ -232,7 +245,7 @@ function setupOrderCalculator(data){
   const special=saved["__specialActive::"+e.key]===1||saved["__specialActive::"+e.key]===true;
   const sp=saved["__special::"+e.key];
   if(special&&sp!==null&&sp!==undefined&&Number.isFinite(Number(sp))&&Number(sp)>=0)return Number(sp);
-  return e.price.value===""?suggestedFor(e)??NaN:Number(e.price.value);
+  return e.price.value===""?(suggestedFor(e)??NaN):Number(e.price.value);
  }
  function lines(){return entries.filter(e=>e.qty>0);}
  function calculate(){
@@ -282,6 +295,6 @@ function setupOrderCalculator(data){
   globalMargin.value=String(saved.__defaultMargin??30);updateDefault();
   seedSuggested();
  });
- document.addEventListener("vu:costing-updated",event=>{costing=event.detail;costsLoaded=true;seedSuggested();});
+ document.addEventListener("vu:costing-updated",event=>{if(event.detail?.recipes?.length){costing=event.detail;costsLoaded=true;seedSuggested();}else calculate();});
  setActive(active,false);setActive(pricingActive,true);calculate();document.dispatchEvent(new Event("vu:pricing-ready"));
 }
