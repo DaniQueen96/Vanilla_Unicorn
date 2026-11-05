@@ -43,38 +43,7 @@
  document.querySelectorAll("[data-open-tab]").forEach(b=>b.addEventListener("click",()=>openTab(b.dataset.openTab)));
  let last="overview";try{last=sessionStorage.getItem("vu-active-tab")||last}catch(_){}openTab(last);
 
- const $bar=id=>document.getElementById("bar-"+id),form=$bar("transaction-form"),list=$bar("transactions-list"),key="vu-bar-transactions-local-v1";
- let records=[];try{records=JSON.parse(localStorage.getItem(key)||"[]");if(!Array.isArray(records))records=[]}catch(_){}
- let editing=-1;
- const money=n=>"$"+Number(n||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
- const total=r=>Number(r.amount||0)*Number(r.quantity||1);
- function preview(){$bar("preview").textContent=money(Number($bar("quantity").value||0)*Number($bar("amount").value||0))}
- ["quantity","amount"].forEach(id=>$bar(id).addEventListener("input",preview));
- function reset(){editing=-1;form.reset();$bar("quantity").value="1";$bar("save").textContent="Save transaction";$bar("cancel").classList.add("hidden");preview();}
- $bar("cancel").addEventListener("click",reset);
- function draw(){
-  list.replaceChildren();
-  const sales=records.filter(r=>r.type==="sale").reduce((s,r)=>s+total(r),0),expenses=records.filter(r=>r.type==="expense").reduce((s,r)=>s+total(r),0);
-  $bar("sales").textContent=money(sales);$bar("expenses").textContent=money(expenses);$bar("net").textContent=money(sales-expenses);
-  const filter=$bar("filter").value,search=$bar("search").value.toLowerCase();
-  const shown=records.map((r,i)=>({...r,index:i})).filter(r=>(filter==="all"||r.type===filter)&&(r.description+" "+r.date).toLowerCase().includes(search));
-  if(!shown.length){const p=document.createElement("p");p.textContent="No matching transactions.";list.append(p);}
-  shown.forEach(r=>{
-   const row=document.createElement("div");row.className="item";const info=document.createElement("div");
-   const name=document.createElement("strong");name.textContent=r.description;const meta=document.createElement("div");meta.className="muted";meta.textContent=r.date+" · "+r.type+" · "+(r.quantity||1)+" × "+money(r.amount)+" = "+money(total(r));info.append(name,meta);
-   const actions=document.createElement("div");actions.style.display="flex";actions.style.gap="6px";
-   const edit=document.createElement("button");edit.type="button";edit.textContent="Edit";edit.onclick=()=>{editing=r.index;$bar("date").value=r.date;$bar("type").value=r.type;$bar("description").value=r.description;$bar("amount").value=r.amount;$bar("quantity").value=r.quantity||1;$bar("save").textContent="Save changes";$bar("cancel").classList.remove("hidden");preview();form.scrollIntoView({behavior:"smooth"});};
-   const del=document.createElement("button");del.type="button";del.textContent="Delete";del.onclick=()=>{if(!confirm("Delete this transaction?"))return;records.splice(r.index,1);save();};
-   actions.append(edit,del);row.append(info,actions);list.append(row);
-  });
- }
- function save(){try{localStorage.setItem(key,JSON.stringify(records))}catch(e){alert("Unable to save on this device.");}draw();}
- form.addEventListener("submit",e=>{e.preventDefault();const amount=Number($bar("amount").value),quantity=Number($bar("quantity").value),description=$bar("description").value.trim();if(!description||!Number.isFinite(amount)||amount<=0||!Number.isInteger(quantity)||quantity<1)return;
- const record={date:$bar("date").value,type:$bar("type").value,description,amount,quantity};
- if(editing>=0)records[editing]=record;else records.unshift(record);save();reset();});
- ["filter","search"].forEach(id=>$bar(id).addEventListener("input",draw));
- $bar("export").addEventListener("click",()=>{const fields=["date","type","description","quantity","amount"];const csv=[fields.join(","),...records.map(r=>fields.map(k=>'"'+String(r[k]??"").replace(/"/g,'""')+'"').join(","))].join("\r\n");const blob=new Blob([csv],{type:"text/csv"}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download="vanilla-unicorn-bar.csv";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
- draw();preview();
+ setupOrderCalculator(data);
 })();
 
 function setupWasteCalculator(recipes){
@@ -114,6 +83,66 @@ function setupWasteCalculator(recipes){
   }
   counts.forEach((count,name)=>planned.get(name).value=String(count));calculate();
   results.prepend(el("p","muted","Suggested combination uses a greedy no-waste approach; other combinations may use more ingredients."));
+ });
+ calculate();
+}
+
+
+function setupOrderCalculator(data){
+ const root=document.getElementById("order-categories");if(!root)return;
+ const $id=id=>document.getElementById(id),money=n=>"$"+Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+ const recipes=(data.recipes||[]).map(r=>({id:r.id||r.name.toLowerCase().replace(/[^a-z0-9]+/g,"_"),name:r.name}));
+ const drinks=(data.drinks||[]).map(d=>({id:d.id,name:d.name,price:d.price}));
+ const seen=new Set(),groups=[
+  ["Cocktails",recipes],
+  ["Soft Drinks",drinks.filter(x=>/koka|frezzi|sprunk|tanga|green.cow|water/i.test(x.id))],
+  ["Beer & Cider",drinks.filter(x=>/beer|cider/i.test(x.id))],
+  ["Spirits & Alcohol",drinks.filter(x=>/whiskey|rum|vodka|tequila|absinthe/i.test(x.id))],
+  ["Other Drinks",drinks.filter(x=>/tea|juice|milk/i.test(x.id))],
+  ["Food & Snacks",[{id:"nachos",name:"Nachos"},{id:"hotdog",name:"Hotdog"}]]
+ ];
+ const extra=drinks.filter(x=>!groups.some(g=>g[1].some(y=>y.id===x.id)));if(extra.length)groups.push(["More Drinks",extra]);
+ let saved={};try{saved=JSON.parse(localStorage.getItem("vu-order-prices-v1")||"{}")||{}}catch(_){}
+ const entries=[];
+ for(const [group,items] of groups){
+  const panel=document.createElement("details");panel.className="vu-order-category";panel.open=group==="Cocktails";
+  const summary=document.createElement("summary");summary.textContent=group+" ("+items.length+")";panel.append(summary);
+  const content=document.createElement("div");content.className="vu-order-items";
+  for(const item of items){
+   const key=group+"::"+item.id;if(seen.has(key))continue;seen.add(key);
+   const row=document.createElement("div");row.className="vu-order-item";row.dataset.search=(item.name+" "+group).toLowerCase();
+   const name=document.createElement("strong");name.textContent=item.name;
+   const priceLabel=document.createElement("label");priceLabel.textContent="Price $";
+   const price=document.createElement("input");price.type="number";price.min="0";price.step="0.01";price.placeholder="Set price";price.setAttribute("aria-label",item.name+" unit price");
+   if(Object.hasOwn(saved,key))price.value=saved[key];else if(typeof item.price==="number"&&Number.isFinite(item.price))price.value=item.price;
+   priceLabel.append(price);
+   const qtyLabel=document.createElement("label");qtyLabel.textContent="Qty";
+   const qty=document.createElement("input");qty.type="number";qty.min="0";qty.step="1";qty.value="0";qty.setAttribute("aria-label",item.name+" quantity");qtyLabel.append(qty);
+   const total=document.createElement("strong");total.className="vu-order-line-total";total.textContent="$0.00";
+   row.append(name,priceLabel,qtyLabel,total);content.append(row);entries.push({item,group,key,row,price,qty,total});
+   price.addEventListener("input",()=>{const p=Number(price.value);if(price.value!==""&&Number.isFinite(p)&&p>=0){saved[key]=p;}else delete saved[key];try{localStorage.setItem("vu-order-prices-v1",JSON.stringify(saved))}catch(_){}calculate();});
+   qty.addEventListener("input",calculate);
+  }
+  panel.append(content);root.append(panel);
+ }
+ function lines(){return entries.filter(e=>Number(e.qty.value)>0&&Number.isInteger(Number(e.qty.value)));}
+ function calculate(){
+  let sum=0,count=0;const selected=lines(),summary=$id("order-summary");summary.replaceChildren();
+  for(const e of entries){const p=e.price.value===""?NaN:Number(e.price.value),q=Number(e.qty.value);e.total.textContent=q>0?(Number.isFinite(p)&&p>=0?money(q*p):"Set price"):"$0.00";}
+  for(const e of selected){const p=e.price.value===""?NaN:Number(e.price.value),q=Number(e.qty.value);count+=q;if(Number.isFinite(p)&&p>=0)sum+=p*q;
+   const line=document.createElement("div");line.className="vu-order-summary-line";line.textContent=e.item.name+" × "+q+" — "+(Number.isFinite(p)&&p>=0?money(p*q):"Price missing");summary.append(line);
+  }
+  $id("order-count").textContent=String(count);$id("order-total").textContent=selected.some(e=>e.price.value===""||!Number.isFinite(Number(e.price.value)))?"Incomplete — set prices":money(sum);
+  if(!selected.length){const msg=document.createElement("p");msg.className="muted";msg.textContent="No items selected yet.";summary.append(msg);}
+ }
+ $id("order-search").addEventListener("input",()=>{const q=$id("order-search").value.trim().toLowerCase();for(const e of entries)e.row.hidden=!e.row.dataset.search.includes(q);for(const panel of root.children){const visible=[...panel.querySelectorAll(".vu-order-item")].some(row=>!row.hidden);panel.hidden=!visible;if(q&&visible)panel.open=true;}});
+ $id("order-clear").addEventListener("click",()=>{entries.forEach(e=>e.qty.value="0");calculate();});
+ $id("order-copy").addEventListener("click",()=>{
+  const selected=lines();if(!selected.length){alert("Add items to the order first.");return;}
+  if(selected.some(e=>e.price.value==="")){alert("Set prices for every selected item first.");return;}
+  const total=selected.reduce((s,e)=>s+Number(e.price.value)*Number(e.qty.value),0);
+  const result="VANILLA UNICORN — ORDER QUOTE\n"+selected.map(e=>e.item.name+" × "+e.qty.value+" @ "+money(Number(e.price.value))+" = "+money(Number(e.price.value)*Number(e.qty.value))).join("\n")+"\nTOTAL: "+money(total);
+  if(navigator.clipboard?.writeText)navigator.clipboard.writeText(result).then(()=>alert("Order copied.")).catch(()=>prompt("Copy your order:",result));else prompt("Copy your order:",result);
  });
  calculate();
 }
