@@ -18,6 +18,8 @@ const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
 let stopStaffListener = null;
 let staffInitialized = false;
+let eventsInitialized = false;
+let stopEventsListener = null;
 const screen = document.getElementById("auth-screen");
 const app = document.getElementById("protected-app");
 const logout = document.getElementById("logout-button");
@@ -52,6 +54,8 @@ onAuthStateChanged(auth, (user) => {
   app.classList.toggle("hidden", !owner);
   logout.classList.toggle("hidden", !owner);
   document.getElementById("signed-in-label").textContent = owner ? "VU Owner" : "Drinks · Events · Bookings";
+  if (owner && !eventsInitialized) { eventsInitialized = true; setupEvents(); }
+  if (!owner && stopEventsListener) { stopEventsListener(); stopEventsListener = null; eventsInitialized = false; }
   if (owner && !staffInitialized) {
     staffInitialized = true;
     setupStaffManagement();
@@ -124,5 +128,42 @@ function setupStaffManagement() {
       await addDoc(collection(db, "staffProfiles"), { name, username, roles, status: "pending", createdAt: serverTimestamp() });
       form.reset(); message.textContent = "Employee profile saved. Login activation is not available yet.";
     } catch (error) { message.textContent = "Could not save: " + error.message; }
+  });
+}
+
+function setupEvents() {
+  const form = document.getElementById("event-form");
+  const msg = document.getElementById("event-message");
+  const list = document.getElementById("owner-events");
+  stopEventsListener = onSnapshot(collection(db,"publicEvents"), snap => {
+    list.replaceChildren();
+    const entries = snap.docs.map(d => ({id:d.id,...d.data()})).sort((a,b)=>a.start.localeCompare(b.start));
+    if (!entries.length) list.textContent = "No events published yet.";
+    for (const e of entries) {
+      const row = document.createElement("div"); row.className = "item";
+      const details = document.createElement("div");
+      const title = document.createElement("strong"); title.textContent = e.title;
+      const sub = document.createElement("div"); sub.className = "muted"; sub.textContent = e.start.replace("T"," ") + " · " + e.roles;
+      details.append(title,sub);
+      const remove = document.createElement("button"); remove.textContent = "Unpublish";
+      remove.onclick = async () => { if (confirm("Remove this event from the public calendar?")) await deleteDoc(doc(db,"publicEvents",e.id)); };
+      row.append(details,remove); list.append(row);
+    }
+  }, e => {list.textContent = "Unable to load events: " + e.message;});
+  if (form.dataset.bound) return;
+  form.dataset.bound = "true";
+  form.addEventListener("submit",async ev => {
+    ev.preventDefault();
+    const title = document.getElementById("event-title").value.trim();
+    const start = document.getElementById("event-start").value;
+    const end = document.getElementById("event-end").value;
+    const description = document.getElementById("event-description").value.trim();
+    const roles = document.getElementById("event-roles").value.trim();
+    if (!title || !start || !end || end <= start) {msg.textContent = "Check the title and event times.";return;}
+    try {
+      await addDoc(collection(db,"publicEvents"),{title,start,end,description,roles,createdAt:serverTimestamp()});
+      msg.textContent = "Event published. It will appear on the public events page.";
+      form.reset();
+    } catch(e) {msg.textContent = "Could not publish: " + e.message;}
   });
 }
