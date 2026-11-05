@@ -1,0 +1,146 @@
+{
+  "drinks": [
+    {
+      "id": "whiskey",
+      "name": "Whiskey",
+      "price": null
+    },
+    {
+      "id": "rum",
+      "name": "Rum",
+      "price": null
+    },
+    {
+      "id": "vodka",
+      "name": "Vodka",
+      "price": null
+    },
+    {
+      "id": "tequila",
+      "name": "Tequila",
+      "price": null
+    },
+    {
+      "id": "absinthe",
+      "name": "Absinthe",
+      "price": null
+    },
+    {
+      "id": "beer",
+      "name": "Beer",
+      "price": null
+    },
+    {
+      "id": "cider",
+      "name": "Cider",
+      "price": null
+    },
+    {
+      "id": "koka",
+      "name": "Koka",
+      "price": null
+    },
+    {
+      "id": "frezzi",
+      "name": "Frezzi",
+      "price": null
+    },
+    {
+      "id": "sprunk",
+      "name": "Sprunk",
+      "price": null
+    },
+    {
+      "id": "tanga",
+      "name": "Tanga",
+      "price": null
+    },
+    {
+      "id": "sweet-tea",
+      "name": "Sweet Tea",
+      "price": null
+    },
+    {
+      "id": "green-cow",
+      "name": "Green Cow",
+      "price": null
+    },
+    {
+      "id": "tomato-juice",
+      "name": "Tomato Juice",
+      "price": null
+    },
+    {
+      "id": "pigeon-milk",
+      "name": "Pigeon Milk",
+      "price": null
+    },
+    {
+      "id": "almond-milk",
+      "name": "Almond Milk",
+      "price": null
+    },
+    {
+      "id": "water",
+      "name": "Water",
+      "price": null
+    }
+  ],
+  "recipes": [],
+  "services": [
+    {
+      "id": "venue",
+      "name": "Private venue hire",
+      "price": null
+    },
+    {
+      "id": "dancer",
+      "name": "Dancer booking",
+      "price": null
+    },
+    {
+      "id": "dj",
+      "name": "DJ booking",
+      "price": null
+    }
+  ],
+  "limousines": [
+    {
+      "id": "limo-1",
+      "name": "Limousine 1",
+      "hourlyPrice": null,
+      "active": false
+    },
+    {
+      "id": "limo-2",
+      "name": "Limousine 2",
+      "hourlyPrice": null,
+      "active": false
+    },
+    {
+      "id": "limo-3",
+      "name": "Limousine 3 (future)",
+      "hourlyPrice": null,
+      "active": false
+    }
+  ],
+  "bookings": [],
+  "resources": [
+    {
+      "id": "venue",
+      "name": "VU venue"
+    },
+    {
+      "id": "limo-1",
+      "name": "Limousine 1"
+    },
+    {
+      "id": "limo-2",
+      "name": "Limousine 2"
+    },
+    {
+      "id": "limo-3",
+      "name": "Limousine 3 (future)"
+    }
+  ]
+}
