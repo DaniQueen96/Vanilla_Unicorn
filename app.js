@@ -138,7 +138,7 @@ function setupOrderCalculator(data){
   }
   return sum/yieldCount;
  };
- const marginFor=e=>Number(saved["__margin::"+e.key]??saved["__defaultMargin"]??60);
+ const marginFor=e=>Number(saved["__margin::"+e.key]??saved["__defaultMargin"]??30);
  const suggestedFor=e=>{const cost=unitCost(e.item),m=marginFor(e);return cost===null||m<10||m>90?null:Math.ceil((cost/(1-m/100))/5)*5;};
  let pricesLoaded=false,costsLoaded=false,seeded=new Set();
  const seedSuggested=()=>{
@@ -193,7 +193,7 @@ function setupOrderCalculator(data){
     const costText=el("small","muted","Loading ingredient costs…");
     const sliderLabel=el("label",null,"Target profit margin");
     const slider=el("input");slider.type="range";slider.min="10";slider.max="90";slider.step="5";
-    const sliderText=el("strong",null,"60%");
+    const sliderText=el("strong",null,"30%");
     const stepDown=el("button","vu-qty-btn","−5%"),stepUp=el("button","vu-qty-btn","+5%");
     stepDown.type=stepUp.type="button";
     const suggested=el("div","vu-profit-result");
@@ -279,7 +279,7 @@ function setupOrderCalculator(data){
    if(Object.hasOwn(saved,e.key)&&saved[e.key]!==null)e.price.value=String(saved[e.key]);
    else e.price.value="";
   }
-  globalMargin.value=String(saved.__defaultMargin??60);updateDefault();
+  globalMargin.value=String(saved.__defaultMargin??30);updateDefault();
   seedSuggested();
  });
  document.addEventListener("vu:costing-updated",event=>{costing=event.detail;costsLoaded=true;seedSuggested();});

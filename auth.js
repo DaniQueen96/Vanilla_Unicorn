@@ -126,7 +126,7 @@ onAuthStateChanged(auth, (user) => {
   if (owner && !appLoaded) {
     appLoaded = true;
     const script = document.createElement("script");
-    script.src = "app.js?v=20261105-auto-pricing2";
+    script.src = "app.js?v=20261105-single-pricing3";
     document.body.append(script);
   }
   if (user && !owner) signOut(auth);
@@ -368,7 +368,6 @@ async function setupCosting() {
       const total=document.createElement("p");total.className="costing-total";
       total.textContent=missing.length?"Awaiting store prices: "+missing.map(i=>i.name).join(", "):"Batch cost: "+money(cost)+" · Per serving: "+money(cost/recipe.yieldCount);
       editor.append(total);
-      if(!missing.length){const pricing=document.createElement("div");pricing.className="cocktail-pricing";const label=document.createElement("label");label.textContent="Target gross profit margin (%)";const slider=document.createElement("input");slider.type="range";slider.min="10";slider.max="90";slider.step="5";slider.value="50";const result=document.createElement("strong");const hint=document.createElement("p");hint.className="muted";hint.textContent="Suggested selling price only — not published to your customer menu.";const calculate=()=>{const margin=Number(slider.value)/100;const unitCost=cost/recipe.yieldCount;const suggested=unitCost/(1-margin);result.textContent="At "+slider.value+"% margin: sell for "+money(suggested)+" · profit "+money(suggested-unitCost)+" per serving";};slider.addEventListener("input",calculate);calculate();label.append(slider);pricing.append(label,result,hint);editor.append(pricing);}
       box.append(editor);recipesEl.append(box);
     });
   }
