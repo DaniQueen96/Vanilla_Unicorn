@@ -8,3 +8,10 @@
 /* Prominent, accessible staff login in the main navigation. */
 #main-nav .staff-nav-link{display:inline-flex;align-items:center;justify-content:center;padding:10px 17px;border:1px solid #5ae4ef;border-radius:999px;color:#9df4fa;font-weight:700;white-space:nowrap;transition:background .2s,color .2s}
 #main-nav .staff-nav-link:hover,#main-nav .staff-nav-link:focus-visible{background:#5ae4ef;color:#160e1c}
+
+/* Bar previews use in-city inventory icons; no unconfirmed prices displayed. */
+.menu-panel{padding:28px}.menu-preview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;width:100%;max-width:470px;margin:4px 0 16px}
+.menu-preview>div{display:flex;flex-direction:column;align-items:center;gap:7px;background:#1d1424;border:1px solid #784572;border-radius:12px;padding:12px 5px;font-size:12px}
+.menu-preview img{width:62px;height:62px;object-fit:contain}
+.menu-panel p{font-size:12px;max-width:400px}
+@media(max-width:520px){.menu-preview{grid-template-columns:repeat(2,minmax(0,1fr))}}
