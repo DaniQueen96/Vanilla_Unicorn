@@ -86,7 +86,224 @@
       "price": null
     }
   ],
-  "recipes": [],
+  "recipes": [
+    {
+      "id": "whiskey_sour",
+      "name": "Whiskey Sour",
+      "ingredients": [
+        {
+          "name": "Lemon",
+          "quantity": 1
+        },
+        {
+          "name": "Whiskey",
+          "quantity": 1
+        },
+        {
+          "name": "Eggs",
+          "quantity": 1
+        },
+        {
+          "name": "Sugar",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "id": "pi_a_colada",
+      "name": "Piña Colada",
+      "ingredients": [
+        {
+          "name": "Rum",
+          "quantity": 1
+        },
+        {
+          "name": "Pineapple",
+          "quantity": 1
+        },
+        {
+          "name": "Coconut",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "id": "bloody_mary",
+      "name": "Bloody Mary",
+      "ingredients": [
+        {
+          "name": "Lemon",
+          "quantity": 1
+        },
+        {
+          "name": "Chili Peppers",
+          "quantity": 1
+        },
+        {
+          "name": "Salt",
+          "quantity": 1
+        },
+        {
+          "name": "Vodka",
+          "quantity": 1
+        },
+        {
+          "name": "Tomato Juice",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "id": "shirley_temple",
+      "name": "Shirley Temple",
+      "ingredients": [
+        {
+          "name": "Sprunk",
+          "quantity": 1
+        },
+        {
+          "name": "Cherry",
+          "quantity": 1
+        },
+        {
+          "name": "Grenadine",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "id": "rainbow_rush",
+      "name": "Rainbow Rush",
+      "ingredients": [
+        {
+          "name": "Sprunk",
+          "quantity": 1
+        },
+        {
+          "name": "Skittles",
+          "quantity": 1
+        },
+        {
+          "name": "Vodka",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "id": "mojito",
+      "name": "Mojito",
+      "ingredients": [
+        {
+          "name": "Sprunk",
+          "quantity": 1
+        },
+        {
+          "name": "Sugar",
+          "quantity": 1
+        },
+        {
+          "name": "Lime",
+          "quantity": 1
+        },
+        {
+          "name": "Rum",
+          "quantity": 1
+        },
+        {
+          "name": "Mint Leaves",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "id": "old_fashioned",
+      "name": "Old Fashioned",
+      "ingredients": [
+        {
+          "name": "Whiskey",
+          "quantity": 1
+        },
+        {
+          "name": "Orange",
+          "quantity": 1
+        },
+        {
+          "name": "Sugar",
+          "quantity": 1
+        },
+        {
+          "name": "Angostura Bitters",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "id": "margarita",
+      "name": "Margarita",
+      "ingredients": [
+        {
+          "name": "Lime",
+          "quantity": 1
+        },
+        {
+          "name": "Tequila",
+          "quantity": 1
+        },
+        {
+          "name": "Orange",
+          "quantity": 1
+        },
+        {
+          "name": "Sugar",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "id": "salty_pigeon",
+      "name": "Salty Pigeon",
+      "ingredients": [
+        {
+          "name": "Pigeon Milk",
+          "quantity": 1
+        },
+        {
+          "name": "Vodka",
+          "quantity": 1
+        },
+        {
+          "name": "Cocoa Powder",
+          "quantity": 1
+        },
+        {
+          "name": "Salt",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "id": "virgin_mojito",
+      "name": "Virgin Mojito",
+      "ingredients": [
+        {
+          "name": "Sprunk",
+          "quantity": 1
+        },
+        {
+          "name": "Sugar",
+          "quantity": 1
+        },
+        {
+          "name": "Lime",
+          "quantity": 1
+        },
+        {
+          "name": "Mint Leaves",
+          "quantity": 1
+        }
+      ]
+    }
+  ],
   "services": [
     {
       "id": "venue",
