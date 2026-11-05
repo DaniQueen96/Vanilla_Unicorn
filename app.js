@@ -123,7 +123,7 @@ function setupOrderCalculator(data){
   ["Food & Snacks",[{id:"nachos",name:"Nachos"},{id:"hotdog",name:"Hotdog"},{id:"ham_sandwich",name:"Ham Sandwich"},{id:"salted_peanuts",name:"Salted Peanuts"},{id:"smores",name:"S'mores"}]]
  ];
  const extra=drinks.filter(x=>!groups.some(g=>g[1].some(y=>y.id===x.id)));if(extra.length)groups.push(["More Drinks",extra]);
- let saved={};try{saved=JSON.parse(localStorage.getItem("vu-order-prices-v1")||"{}")||{}}catch(_){}
+ let saved={};
  const entries=[];let active=groups[0][0],pricingActive=groups[0][0];
  const setActive=(group,isPricing)=>{
   if(isPricing)pricingActive=group;else active=group;
@@ -146,12 +146,12 @@ function setupOrderCalculator(data){
    row.append(identity,priceDisplay,controls);panel.append(row);
    const priceRow=el("div","vu-order-item vu-pricing-item");const priceIdentity=el("div","vu-order-identity");priceIdentity.append(picture(item),el("strong",null,item.name));
    const label=el("label",null,"Selling price ($)");const price=el("input");price.type="number";price.min="0";price.step="0.01";price.placeholder="Not set";price.setAttribute("aria-label",item.name+" selling price");
-   if(Object.hasOwn(saved,key))price.value=saved[key];else if(typeof item.price==="number"&&Number.isFinite(item.price))price.value=item.price;
+   if(typeof item.price==="number"&&Number.isFinite(item.price))price.value=item.price;
    label.append(price);priceRow.append(priceIdentity,label);ppanel.append(priceRow);
    const entry={item,group,key,row,price,priceDisplay,qty:0};entries.push(entry);
    const change=delta=>{entry.qty=Math.max(0,entry.qty+delta);qty.textContent=String(entry.qty);calculate();};
    minus.onclick=()=>change(-1);plus.onclick=()=>change(1);
-   price.addEventListener("input",()=>{const p=Number(price.value);if(price.value!==""&&Number.isFinite(p)&&p>=0)saved[key]=p;else delete saved[key];try{localStorage.setItem("vu-order-prices-v1",JSON.stringify(saved))}catch(_){}calculate();});
+   price.addEventListener("input",()=>{const p=Number(price.value);if(price.value!==""&&Number.isFinite(p)&&p>=0)saved[key]=p;else delete saved[key];const status=$id("pricing-status");if(status)status.textContent="Saving…";document.dispatchEvent(new CustomEvent("vu:save-price",{detail:{key,value:price.value===""?null:p}}));calculate();});
   }
  }
  function lines(){return entries.filter(e=>e.qty>0);}
@@ -178,5 +178,13 @@ function setupOrderCalculator(data){
   const result="VANILLA UNICORN — ORDER QUOTE\n"+selected.map(e=>e.item.name+" × "+e.qty+" @ "+money(Number(e.price.value))+" = "+money(Number(e.price.value)*e.qty)).join("\n")+"\nTOTAL: "+money(selected.reduce((s,e)=>s+Number(e.price.value)*e.qty,0));
   if(navigator.clipboard?.writeText)navigator.clipboard.writeText(result).then(()=>alert("Order copied.")).catch(()=>prompt("Copy your order:",result));else prompt("Copy your order:",result);
  });
- setActive(active,false);setActive(pricingActive,true);calculate();
+ document.addEventListener("vu:prices-updated",event=>{
+  saved=event.detail||{};
+  for(const e of entries){
+   if(Object.hasOwn(saved,e.key)&&saved[e.key]!==null)e.price.value=String(saved[e.key]);
+   else e.price.value="";
+  }
+  calculate();
+ });
+ setActive(active,false);setActive(pricingActive,true);calculate();document.dispatchEvent(new Event("vu:pricing-ready"));
 }

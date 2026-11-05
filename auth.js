@@ -28,6 +28,34 @@ const app = document.getElementById("protected-app");
 const logout = document.getElementById("logout-button");
 const status = document.getElementById("login-message");
 let appLoaded = false;
+let stopPricingListener = null;
+let sharedPrices = {};
+const pricingDoc = doc(db,"businessSettings","sellingPrices");
+function beginPricingSync(){
+ if(stopPricingListener)return;
+ stopPricingListener=onSnapshot(pricingDoc,snapshot=>{
+  const raw=snapshot.exists()?snapshot.data().prices:{};
+  sharedPrices=raw&&typeof raw==="object"?raw:{};
+  document.dispatchEvent(new CustomEvent("vu:prices-updated",{detail:sharedPrices}));
+  const status=document.getElementById("pricing-status");
+  if(status)status.textContent="Prices synced across devices.";
+ },error=>{
+  const status=document.getElementById("pricing-status");
+  if(status)status.textContent="Price sync failed: "+error.message;
+ });
+}
+document.addEventListener("vu:pricing-ready",()=>document.dispatchEvent(new CustomEvent("vu:prices-updated",{detail:sharedPrices})));
+document.addEventListener("vu:save-price",async event=>{
+ if(auth.currentUser?.uid!==OWNER_UID)return;
+ const {key,value}=event.detail||{};
+ if(typeof key!=="string"||!key.includes("::"))return;
+ const status=document.getElementById("pricing-status");
+ if(value!==null&&(!Number.isFinite(value)||value<0)){if(status)status.textContent="Enter a valid price.";return;}
+ try{
+  await setDoc(pricingDoc,{prices:{[key]:value===null?null:value}}, {merge:true});
+  if(status)status.textContent="Price saved for all devices.";
+ }catch(error){if(status)status.textContent="Save failed: "+error.message;}
+});
 
 document.getElementById("login-form").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -57,6 +85,8 @@ onAuthStateChanged(auth, (user) => {
   app.classList.toggle("hidden", !owner);
   logout.classList.toggle("hidden", !owner);
   document.getElementById("signed-in-label").textContent = owner ? "VU Owner" : "Drinks · Events · Bookings";
+  if (owner) beginPricingSync();
+  if (!owner && stopPricingListener) { stopPricingListener(); stopPricingListener=null; sharedPrices={}; }
   if (owner && !costingInitialized) { costingInitialized = true; setupCosting(); }
   if (!owner) costingInitialized = false;
   if (owner && !incidentsInitialized) { incidentsInitialized = true; setupIncidents(); }
@@ -74,7 +104,7 @@ onAuthStateChanged(auth, (user) => {
   if (owner && !appLoaded) {
     appLoaded = true;
     const script = document.createElement("script");
-    script.src = "app.js?v=20261105-pricing-tabs1";
+    script.src = "app.js?v=20261105-shared-pricing1";
     document.body.append(script);
   }
   if (user && !owner) signOut(auth);
