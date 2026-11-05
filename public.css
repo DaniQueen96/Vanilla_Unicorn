@@ -4,3 +4,7 @@
 
 /* Embedded management portal: same website, no page navigation. */
 .staff-portal[hidden]{display:none!important}.staff-portal{position:fixed;inset:0;z-index:9999;background:#120b17;display:flex;flex-direction:column}.staff-portal-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 20px;background:#211126;border-bottom:1px solid #713b68}.staff-portal-bar h2{font-size:1.05rem;margin:0;color:#fff}.staff-portal-bar button{border:1px solid #c678ad;border-radius:8px;background:#321a34;color:white;padding:10px 14px;cursor:pointer}.staff-portal iframe{border:0;flex:1;width:100%;min-height:0;background:#140913}
+
+/* Prominent, accessible staff login in the main navigation. */
+#main-nav .staff-nav-link{display:inline-flex;align-items:center;justify-content:center;padding:10px 17px;border:1px solid #5ae4ef;border-radius:999px;color:#9df4fa;font-weight:700;white-space:nowrap;transition:background .2s,color .2s}
+#main-nav .staff-nav-link:hover,#main-nav .staff-nav-link:focus-visible{background:#5ae4ef;color:#160e1c}
