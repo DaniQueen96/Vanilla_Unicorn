@@ -19,7 +19,7 @@
 // Main navigation and nested settings sections.
 (function(){
  const primary=["overview","recipes","transactions","packages","tips","calendar","settings"];
- const nested=["staff","costing","drinks","limo","events","incidents"];
+ const nested=["staff","costing","pricing","drinks","limo","events","incidents"];
  const settingsContent=document.getElementById("settings-content");
  nested.forEach(id=>{const node=document.getElementById(id);if(node){node.classList.add("settings-panel");settingsContent.append(node);}});
  const nav=[...document.querySelectorAll("nav [data-tab]")];
@@ -106,60 +106,77 @@ function setupWasteCalculator(recipes){
 }
 
 function setupOrderCalculator(data){
- const root=document.getElementById("order-categories");if(!root)return;
- const $id=id=>document.getElementById(id),money=n=>"$"+Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
- const recipes=(data.recipes||[]).map(r=>({id:r.id||r.name.toLowerCase().replace(/[^a-z0-9]+/g,"_"),name:r.name}));
+ const root=document.getElementById("order-categories"),tabs=document.getElementById("order-tabs"),pricing=document.getElementById("pricing-categories"),priceTabs=document.getElementById("pricing-tabs");
+ if(!root||!tabs||!pricing||!priceTabs)return;
+ const $id=id=>document.getElementById(id);
+ const money=n=>"$"+Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+ const iconId=item=>String(item.id||item.name).toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"").replace("pi_a_colada","pina_colada");
+ const picture=item=>{const img=el("img","vu-item-icon");img.alt=item.name;img.loading="lazy";img.src="https://p17.admin.opfw.me/images/icons/items/"+encodeURIComponent(iconId(item))+".png";img.onerror=()=>{img.onerror=null;img.src="assets/vu-unicorn.svg";};return img;};
+ const recipes=(data.recipes||[]).map(r=>({id:r.id||iconId(r),name:r.name}));
  const drinks=(data.drinks||[]).map(d=>({id:d.id,name:d.name,price:d.price}));
- const seen=new Set(),groups=[
+ const groups=[
   ["Cocktails",recipes],
   ["Soft Drinks",drinks.filter(x=>/koka|frezzi|sprunk|tanga|green.cow|water/i.test(x.id))],
   ["Beer & Cider",drinks.filter(x=>/beer|cider/i.test(x.id))],
   ["Spirits & Alcohol",drinks.filter(x=>/whiskey|rum|vodka|tequila|absinthe/i.test(x.id))],
   ["Other Drinks",drinks.filter(x=>/tea|juice|milk/i.test(x.id))],
-  ["Food & Snacks",[{id:"nachos",name:"Nachos"},{id:"hotdog",name:"Hotdog"}]]
+  ["Food & Snacks",[{id:"nachos",name:"Nachos"},{id:"hotdog",name:"Hotdog"},{id:"ham_sandwich",name:"Ham Sandwich"},{id:"salted_peanuts",name:"Salted Peanuts"},{id:"smores",name:"S'mores"}]]
  ];
  const extra=drinks.filter(x=>!groups.some(g=>g[1].some(y=>y.id===x.id)));if(extra.length)groups.push(["More Drinks",extra]);
  let saved={};try{saved=JSON.parse(localStorage.getItem("vu-order-prices-v1")||"{}")||{}}catch(_){}
- const entries=[];
+ const entries=[];let active=groups[0][0],pricingActive=groups[0][0];
+ const setActive=(group,isPricing)=>{
+  if(isPricing)pricingActive=group;else active=group;
+  const holder=isPricing?pricing:root,bar=isPricing?priceTabs:tabs;
+  [...holder.children].forEach(p=>p.hidden=p.dataset.group!==group);
+  [...bar.children].forEach(b=>{const on=b.dataset.group===group;b.classList.toggle("active",on);b.setAttribute("aria-selected",String(on));});
+ };
  for(const [group,items] of groups){
-  const panel=document.createElement("details");panel.className="vu-order-category";panel.open=group==="Cocktails";
-  const summary=document.createElement("summary");summary.textContent=group+" ("+items.length+")";panel.append(summary);
-  const content=document.createElement("div");content.className="vu-order-items";
+  const tab=el("button","vu-order-tab",group);tab.type="button";tab.dataset.group=group;tab.setAttribute("role","tab");tab.onclick=()=>setActive(group,false);tabs.append(tab);
+  const pt=el("button","vu-order-tab",group);pt.type="button";pt.dataset.group=group;pt.setAttribute("role","tab");pt.onclick=()=>setActive(group,true);priceTabs.append(pt);
+  const panel=el("div","vu-order-items");panel.dataset.group=group;root.append(panel);
+  const ppanel=el("div","vu-order-items");ppanel.dataset.group=group;pricing.append(ppanel);
   for(const item of items){
-   const key=group+"::"+item.id;if(seen.has(key))continue;seen.add(key);
-   const row=document.createElement("div");row.className="vu-order-item";row.dataset.search=(item.name+" "+group).toLowerCase();
-   const name=document.createElement("strong");name.textContent=item.name;
-   const priceLabel=document.createElement("label");priceLabel.textContent="Price $";
-   const price=document.createElement("input");price.type="number";price.min="0";price.step="0.01";price.placeholder="Set price";price.setAttribute("aria-label",item.name+" unit price");
+   const key=group+"::"+item.id;
+   const row=el("div","vu-order-item");row.dataset.search=(item.name+" "+group).toLowerCase();
+   const identity=el("div","vu-order-identity");identity.append(picture(item),el("strong",null,item.name));
+   const priceDisplay=el("span","vu-order-price");
+   const minus=el("button","vu-qty-btn","−"),plus=el("button","vu-qty-btn","+");minus.type=plus.type="button";minus.setAttribute("aria-label","Remove one "+item.name);plus.setAttribute("aria-label","Add one "+item.name);
+   const qty=el("span","vu-qty-value","0");const controls=el("div","vu-qty-controls");controls.append(minus,qty,plus);
+   row.append(identity,priceDisplay,controls);panel.append(row);
+   const priceRow=el("div","vu-order-item vu-pricing-item");const priceIdentity=el("div","vu-order-identity");priceIdentity.append(picture(item),el("strong",null,item.name));
+   const label=el("label",null,"Selling price ($)");const price=el("input");price.type="number";price.min="0";price.step="0.01";price.placeholder="Not set";price.setAttribute("aria-label",item.name+" selling price");
    if(Object.hasOwn(saved,key))price.value=saved[key];else if(typeof item.price==="number"&&Number.isFinite(item.price))price.value=item.price;
-   priceLabel.append(price);
-   const qtyLabel=document.createElement("label");qtyLabel.textContent="Qty";
-   const qty=document.createElement("input");qty.type="number";qty.min="0";qty.step="1";qty.value="0";qty.setAttribute("aria-label",item.name+" quantity");qtyLabel.append(qty);
-   const total=document.createElement("strong");total.className="vu-order-line-total";total.textContent="$0.00";
-   row.append(name,priceLabel,qtyLabel,total);content.append(row);entries.push({item,group,key,row,price,qty,total});
-   price.addEventListener("input",()=>{const p=Number(price.value);if(price.value!==""&&Number.isFinite(p)&&p>=0){saved[key]=p;}else delete saved[key];try{localStorage.setItem("vu-order-prices-v1",JSON.stringify(saved))}catch(_){}calculate();});
-   qty.addEventListener("input",calculate);
+   label.append(price);priceRow.append(priceIdentity,label);ppanel.append(priceRow);
+   const entry={item,group,key,row,price,priceDisplay,qty:0};entries.push(entry);
+   const change=delta=>{entry.qty=Math.max(0,entry.qty+delta);qty.textContent=String(entry.qty);calculate();};
+   minus.onclick=()=>change(-1);plus.onclick=()=>change(1);
+   price.addEventListener("input",()=>{const p=Number(price.value);if(price.value!==""&&Number.isFinite(p)&&p>=0)saved[key]=p;else delete saved[key];try{localStorage.setItem("vu-order-prices-v1",JSON.stringify(saved))}catch(_){}calculate();});
   }
-  panel.append(content);root.append(panel);
  }
- function lines(){return entries.filter(e=>Number(e.qty.value)>0&&Number.isInteger(Number(e.qty.value)));}
+ function lines(){return entries.filter(e=>e.qty>0);}
  function calculate(){
-  let sum=0,count=0;const selected=lines(),summary=$id("order-summary");summary.replaceChildren();
-  for(const e of entries){const p=e.price.value===""?NaN:Number(e.price.value),q=Number(e.qty.value);e.total.textContent=q>0?(Number.isFinite(p)&&p>=0?money(q*p):"Set price"):"$0.00";}
-  for(const e of selected){const p=e.price.value===""?NaN:Number(e.price.value),q=Number(e.qty.value);count+=q;if(Number.isFinite(p)&&p>=0)sum+=p*q;
-   const line=document.createElement("div");line.className="vu-order-summary-line";line.textContent=e.item.name+" × "+q+" — "+(Number.isFinite(p)&&p>=0?money(p*q):"Price missing");summary.append(line);
+  let sum=0,count=0,missing=false;const summary=$id("order-summary");summary.replaceChildren();
+  for(const e of entries){const p=e.price.value===""?NaN:Number(e.price.value);e.priceDisplay.textContent=Number.isFinite(p)&&p>=0?money(p):"Price not set";}
+  for(const e of lines()){
+   const p=e.price.value===""?NaN:Number(e.price.value);count+=e.qty;
+   if(Number.isFinite(p)&&p>=0)sum+=p*e.qty;else missing=true;
+   const line=el("div","vu-order-summary-line");line.append(picture(e.item),el("span",null,e.item.name+" × "+e.qty),el("strong",null,Number.isFinite(p)&&p>=0?money(p*e.qty):"Price missing"));summary.append(line);
   }
-  $id("order-count").textContent=String(count);$id("order-total").textContent=selected.some(e=>e.price.value===""||!Number.isFinite(Number(e.price.value)))?"Incomplete — set prices":money(sum);
-  if(!selected.length){const msg=document.createElement("p");msg.className="muted";msg.textContent="No items selected yet.";summary.append(msg);}
+  $id("order-count").textContent=String(count);$id("order-total").textContent=missing?"Incomplete — set prices":money(sum);
+  if(!count)summary.append(el("p","muted","No items selected yet."));
  }
- $id("order-search").addEventListener("input",()=>{const q=$id("order-search").value.trim().toLowerCase();for(const e of entries)e.row.hidden=!e.row.dataset.search.includes(q);for(const panel of root.children){const visible=[...panel.querySelectorAll(".vu-order-item")].some(row=>!row.hidden);panel.hidden=!visible;if(q&&visible)panel.open=true;}});
- $id("order-clear").addEventListener("click",()=>{entries.forEach(e=>e.qty.value="0");calculate();});
+ $id("order-search").addEventListener("input",()=>{
+  const q=$id("order-search").value.trim().toLowerCase();
+  for(const e of entries)e.row.hidden=!e.row.dataset.search.includes(q);
+  if(q){const first=entries.find(e=>!e.row.hidden);if(first)setActive(first.group,false);}
+ });
+ $id("order-clear").addEventListener("click",()=>{entries.forEach(e=>e.qty=0);root.querySelectorAll(".vu-qty-value").forEach(e=>e.textContent="0");calculate();});
  $id("order-copy").addEventListener("click",()=>{
   const selected=lines();if(!selected.length){alert("Add items to the order first.");return;}
-  if(selected.some(e=>e.price.value==="")){alert("Set prices for every selected item first.");return;}
-  const total=selected.reduce((s,e)=>s+Number(e.price.value)*Number(e.qty.value),0);
-  const result="VANILLA UNICORN — ORDER QUOTE\n"+selected.map(e=>e.item.name+" × "+e.qty.value+" @ "+money(Number(e.price.value))+" = "+money(Number(e.price.value)*Number(e.qty.value))).join("\n")+"\nTOTAL: "+money(total);
+  if(selected.some(e=>e.price.value==="")){alert("Set prices in Settings → Pricing Management first.");return;}
+  const result="VANILLA UNICORN — ORDER QUOTE\n"+selected.map(e=>e.item.name+" × "+e.qty+" @ "+money(Number(e.price.value))+" = "+money(Number(e.price.value)*e.qty)).join("\n")+"\nTOTAL: "+money(selected.reduce((s,e)=>s+Number(e.price.value)*e.qty,0));
   if(navigator.clipboard?.writeText)navigator.clipboard.writeText(result).then(()=>alert("Order copied.")).catch(()=>prompt("Copy your order:",result));else prompt("Copy your order:",result);
  });
- calculate();
+ setActive(active,false);setActive(pricingActive,true);calculate();
 }
