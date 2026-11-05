@@ -298,23 +298,26 @@ async function setupCosting() {
       pricesEl.append(row);
     }
     state.recipes.forEach((recipe,index)=>{
-      const box=document.createElement("article");box.className="item costing-recipe";
-      const heading=document.createElement("h3");heading.textContent=recipe.name;box.append(heading);
-      const recipeMeta=document.createElement("p");recipeMeta.className="muted";recipeMeta.textContent=recipe.ingredients.length+" ingredients · Editable recipe";box.append(recipeMeta);
-      box.append(field("Servings produced",recipe.yieldCount,v=>{const n=Number(v);if(Number.isInteger(n)&&n>0){recipe.yieldCount=n;save();render()}},"number"));
+      const box=document.createElement("details");box.className="costing-recipe";
+      const heading=document.createElement("summary");heading.className="cocktail-heading";heading.append(imageFor(recipe.ingredients.find(i=>["Whiskey","Rum","Vodka","Tequila"].includes(i.name))?.name||recipe.ingredients[0]?.name||"Water"));
+      const headingInfo=document.createElement("span");const headingName=document.createElement("strong");headingName.textContent=recipe.name;const headingCost=document.createElement("small");headingCost.className="cocktail-price";const initialMissing=recipe.ingredients.some(i=>state.prices[i.name]===undefined);const initialCost=recipe.ingredients.reduce((sum,i)=>sum+(Number(state.prices[i.name])||0)*Number(i.qty),0);headingCost.textContent=initialMissing?"Needs ingredient pricing":"Cost per serving · "+money(initialCost/recipe.yieldCount);headingInfo.append(headingName,headingCost);heading.append(headingInfo);box.append(heading);const editor=document.createElement("div");editor.className="cocktail-editor";
+      const recipeMeta=document.createElement("p");recipeMeta.className="muted";recipeMeta.textContent=recipe.ingredients.length+" ingredients · Editable recipe";editor.append(recipeMeta);
+      editor.append(field("Servings produced",recipe.yieldCount,v=>{const n=Number(v);if(Number.isInteger(n)&&n>0){recipe.yieldCount=n;save();render()}},"number"));
       const ingredientWrap=document.createElement("div");ingredientWrap.className="costing-ingredients";
       recipe.ingredients.forEach((item,j)=>{
         const line=document.createElement("div");line.className="costing-ingredient";line.append(imageFor(item.name));
         line.append(field("Ingredient",item.name,v=>{item.name=canonicalNames[v.trim()]||v.trim();save();render()}));
         line.append(field("Quantity",item.qty,v=>{const n=Number(v);if(Number.isFinite(n)&&n>0){item.qty=n;save();render()}},"number"));
         const remove=document.createElement("button");remove.type="button";remove.textContent="Remove";remove.onclick=()=>{recipe.ingredients.splice(j,1);save();render()};line.append(remove);ingredientWrap.append(line);
-      });box.append(ingredientWrap);
-      const add=document.createElement("button");add.type="button";add.textContent="Add ingredient";add.onclick=()=>{recipe.ingredients.push({name:"New ingredient",qty:1});save();render()};box.append(add);
+      });editor.append(ingredientWrap);
+      const add=document.createElement("button");add.type="button";add.textContent="Add ingredient";add.onclick=()=>{recipe.ingredients.push({name:"New ingredient",qty:1});save();render()};editor.append(add);
       const missing=recipe.ingredients.filter(i=>state.prices[i.name]===undefined);
       const cost=recipe.ingredients.reduce((sum,i)=>sum+(Number(state.prices[i.name])||0)*Number(i.qty),0);
       const total=document.createElement("p");total.className="costing-total";
       total.textContent=missing.length?"Awaiting store prices: "+missing.map(i=>i.name).join(", "):"Batch cost: "+money(cost)+" · Per serving: "+money(cost/recipe.yieldCount);
-      box.append(total);recipesEl.append(box);
+      editor.append(total);
+      if(!missing.length){const pricing=document.createElement("div");pricing.className="cocktail-pricing";const label=document.createElement("label");label.textContent="Target gross profit margin (%)";const slider=document.createElement("input");slider.type="range";slider.min="10";slider.max="90";slider.step="5";slider.value="50";const result=document.createElement("strong");const hint=document.createElement("p");hint.className="muted";hint.textContent="Suggested selling price only — not published to your customer menu.";const calculate=()=>{const margin=Number(slider.value)/100;const unitCost=cost/recipe.yieldCount;const suggested=unitCost/(1-margin);result.textContent="At "+slider.value+"% margin: sell for "+money(suggested)+" · profit "+money(suggested-unitCost)+" per serving";};slider.addEventListener("input",calculate);calculate();label.append(slider);pricing.append(label,result,hint);editor.append(pricing);}
+      box.append(editor);recipesEl.append(box);
     });
   }
   render();
