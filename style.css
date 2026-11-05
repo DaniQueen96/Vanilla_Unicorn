@@ -202,3 +202,16 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 .vu-order-summary-line{display:flex;align-items:center;gap:12px}
 .vu-order-summary-line span{flex:1}
 @media(max-width:550px){.vu-order-item{flex-wrap:wrap}.vu-order-price{margin-left:auto}.vu-qty-controls{margin-left:auto}.vu-order-identity .vu-item-icon{width:40px;height:40px}}
+
+.vu-global-margin{padding:16px;border:1px solid rgba(255,255,255,.13);border-radius:14px;margin:14px 0}
+.vu-global-margin label,.vu-profit-controls label{display:flex;flex-direction:column;gap:8px}
+.vu-global-margin input[type=range],.vu-profit-controls input[type=range]{width:100%;accent-color:#ec4899}
+.vu-profit-controls{width:100%;display:grid;gap:10px;padding:12px;border-top:1px solid rgba(255,255,255,.12)}
+.vu-pricing-item{flex-wrap:wrap}
+.vu-pricing-item .vu-profit-controls{flex-basis:100%}
+.vu-margin-steps{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.vu-margin-steps button{width:auto;min-width:65px}
+.vu-special-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.vu-special-row label{flex-direction:row;align-items:center}
+.vu-special-row input[type=number]{max-width:170px}
+.vu-profit-result{font-weight:700}

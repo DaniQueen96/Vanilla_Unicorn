@@ -124,6 +124,22 @@ function setupOrderCalculator(data){
  ];
  const extra=drinks.filter(x=>!groups.some(g=>g[1].some(y=>y.id===x.id)));if(extra.length)groups.push(["More Drinks",extra]);
  let saved={};
+ let costing=null;
+ const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
+ const getRecipe=item=>costing?.recipes?.find(r=>norm(r.name)===norm(item.name)||norm(r.name).replace("na","")===norm(item.name));
+ const unitCost=item=>{
+  const recipe=getRecipe(item);if(!recipe||!costing?.prices)return null;
+  const yieldCount=Number(recipe.yieldCount);if(!Number.isFinite(yieldCount)||yieldCount<=0)return null;
+  let sum=0;
+  for(const ingredient of recipe.ingredients||[]){
+   const n=Number(costing.prices[ingredient.name]),q=Number(ingredient.qty);
+   if(costing.prices[ingredient.name]===undefined||!Number.isFinite(n)||!Number.isFinite(q)||q<=0)return null;
+   sum+=n*q;
+  }
+  return sum/yieldCount;
+ };
+ const marginFor=e=>Number(saved["__margin::"+e.key]??saved["__defaultMargin"]??60);
+ const suggestedFor=e=>{const cost=unitCost(e.item),m=marginFor(e);return cost===null||m<10||m>90?null:Math.ceil((cost/(1-m/100))/5)*5;};
  const entries=[];let active=groups[0][0],pricingActive=groups[0][0];
  const setActive=(group,isPricing)=>{
   if(isPricing)pricingActive=group;else active=group;
@@ -147,19 +163,73 @@ function setupOrderCalculator(data){
    const priceRow=el("div","vu-order-item vu-pricing-item");const priceIdentity=el("div","vu-order-identity");priceIdentity.append(picture(item),el("strong",null,item.name));
    const label=el("label",null,"Selling price ($)");const price=el("input");price.type="number";price.min="0";price.step="0.01";price.placeholder="Not set";price.setAttribute("aria-label",item.name+" selling price");
    if(typeof item.price==="number"&&Number.isFinite(item.price))price.value=item.price;
-   label.append(price);priceRow.append(priceIdentity,label);ppanel.append(priceRow);
-   const entry={item,group,key,row,price,priceDisplay,qty:0};entries.push(entry);
+   label.append(price);priceRow.append(priceIdentity,label);
+   let pricingControls=null;
+   if(group==="Cocktails"){
+    pricingControls=el("div","vu-profit-controls");
+    const costText=el("small","muted","Loading ingredient costs…");
+    const sliderLabel=el("label",null,"Target profit margin");
+    const slider=el("input");slider.type="range";slider.min="10";slider.max="90";slider.step="5";
+    const sliderText=el("strong",null,"60%");
+    const stepDown=el("button","vu-qty-btn","−5%"),stepUp=el("button","vu-qty-btn","+5%");
+    stepDown.type=stepUp.type="button";
+    const suggested=el("div","vu-profit-result");
+    const apply=el("button",null,"Use suggested price");apply.type="button";
+    const specialLabel=el("label","vu-special-toggle","Use special price");
+    const specialOn=el("input");specialOn.type="checkbox";specialLabel.prepend(specialOn);
+    const specialPrice=el("input");specialPrice.type="number";specialPrice.min="0";specialPrice.step="0.01";specialPrice.placeholder="Special price";specialPrice.setAttribute("aria-label",item.name+" special selling price");
+    const specialRow=el("div","vu-special-row");specialRow.append(specialLabel,specialPrice);
+    const steps=el("div","vu-margin-steps");steps.append(stepDown,sliderText,stepUp);
+    sliderLabel.append(slider);pricingControls.append(costText,sliderLabel,steps,suggested,apply,specialRow);priceRow.append(pricingControls);
+    const persist=(k,value)=>document.dispatchEvent(new CustomEvent("vu:save-price",{detail:{key:k,value}}));
+    const updateMargin=val=>{const m=Math.min(90,Math.max(10,Number(val)));slider.value=String(m);saved["__margin::"+key]=m;persist("__margin::"+key,m);refresh();};
+    slider.addEventListener("change",()=>updateMargin(slider.value));
+    slider.addEventListener("input",()=>{sliderText.textContent=slider.value+"%";});
+    stepDown.onclick=()=>updateMargin(Number(slider.value)-5);
+    stepUp.onclick=()=>updateMargin(Number(slider.value)+5);
+    apply.onclick=()=>{const amount=suggestedFor(entry);if(amount===null)return;price.value=String(amount);saved[key]=amount;persist(key,amount);calculate();};
+    specialOn.addEventListener("change",()=>{saved["__specialActive::"+key]=specialOn.checked?1:0;persist("__specialActive::"+key,specialOn.checked?1:0);calculate();});
+    specialPrice.addEventListener("change",()=>{const n=Number(specialPrice.value);const v=specialPrice.value!==""&&Number.isFinite(n)&&n>=0?n:null;saved["__special::"+key]=v;persist("__special::"+key,v);calculate();});
+    pricingControls._ui={costText,slider,sliderText,suggested,apply,specialOn,specialPrice};
+   }
+   ppanel.append(priceRow);
+   const entry={item,group,key,row,price,priceDisplay,qty:0,pricingControls};entries.push(entry);
    const change=delta=>{entry.qty=Math.max(0,entry.qty+delta);qty.textContent=String(entry.qty);calculate();};
    minus.onclick=()=>change(-1);plus.onclick=()=>change(1);
    price.addEventListener("input",()=>{const p=Number(price.value);if(price.value!==""&&Number.isFinite(p)&&p>=0)saved[key]=p;else delete saved[key];const status=$id("pricing-status");if(status)status.textContent="Saving…";document.dispatchEvent(new CustomEvent("vu:save-price",{detail:{key,value:price.value===""?null:p}}));calculate();});
   }
  }
+ const globalMargin=$id("pricing-default-margin"),globalValue=$id("pricing-default-value");
+ const updateDefault=()=>{const m=Number(globalMargin.value);globalValue.textContent=m+"%";};
+ globalMargin.addEventListener("input",updateDefault);
+ globalMargin.addEventListener("change",()=>{const m=Number(globalMargin.value);saved.__defaultMargin=m;document.dispatchEvent(new CustomEvent("vu:save-price",{detail:{key:"__defaultMargin",value:m}}));calculate();});
+ $id("pricing-default-down").onclick=()=>{globalMargin.value=String(Math.max(10,Number(globalMargin.value)-5));globalMargin.dispatchEvent(new Event("change"));};
+ $id("pricing-default-up").onclick=()=>{globalMargin.value=String(Math.min(90,Number(globalMargin.value)+5));globalMargin.dispatchEvent(new Event("change"));};
+ function activePrice(e){
+  const special=saved["__specialActive::"+e.key]===1||saved["__specialActive::"+e.key]===true;
+  const sp=saved["__special::"+e.key];
+  if(special&&sp!==null&&sp!==undefined&&Number.isFinite(Number(sp))&&Number(sp)>=0)return Number(sp);
+  return e.price.value===""?NaN:Number(e.price.value);
+ }
  function lines(){return entries.filter(e=>e.qty>0);}
  function calculate(){
   let sum=0,count=0,missing=false;const summary=$id("order-summary");summary.replaceChildren();
-  for(const e of entries){const p=e.price.value===""?NaN:Number(e.price.value);e.priceDisplay.textContent=Number.isFinite(p)&&p>=0?money(p):"Price not set";}
+  for(const e of entries){
+   const p=activePrice(e),special=saved["__specialActive::"+e.key];
+   e.priceDisplay.textContent=Number.isFinite(p)&&p>=0?money(p)+(special?" · Special":""):"Price not set";
+   const ui=e.pricingControls?._ui;
+   if(ui){
+    const cost=unitCost(e.item),m=marginFor(e),suggested=suggestedFor(e);
+    ui.costText.textContent=cost===null?"Set up ingredient costs in Recipe & Store Costs first":"Cost per serving: "+money(cost);
+    ui.slider.value=String(m);ui.sliderText.textContent=m+"%";
+    ui.suggested.textContent=suggested===null?"Suggested price unavailable":"Suggested: "+money(suggested)+" · expected profit "+money(suggested-cost);
+    ui.apply.disabled=suggested===null;
+    ui.specialOn.checked=Boolean(special);
+    if(document.activeElement!==ui.specialPrice)ui.specialPrice.value=saved["__special::"+e.key]??"";
+   }
+  }
   for(const e of lines()){
-   const p=e.price.value===""?NaN:Number(e.price.value);count+=e.qty;
+   const p=activePrice(e);count+=e.qty;
    if(Number.isFinite(p)&&p>=0)sum+=p*e.qty;else missing=true;
    const line=el("div","vu-order-summary-line");line.append(picture(e.item),el("span",null,e.item.name+" × "+e.qty),el("strong",null,Number.isFinite(p)&&p>=0?money(p*e.qty):"Price missing"));summary.append(line);
   }
@@ -174,8 +244,8 @@ function setupOrderCalculator(data){
  $id("order-clear").addEventListener("click",()=>{entries.forEach(e=>e.qty=0);root.querySelectorAll(".vu-qty-value").forEach(e=>e.textContent="0");calculate();});
  $id("order-copy").addEventListener("click",()=>{
   const selected=lines();if(!selected.length){alert("Add items to the order first.");return;}
-  if(selected.some(e=>e.price.value==="")){alert("Set prices in Settings → Pricing Management first.");return;}
-  const result="VANILLA UNICORN — ORDER QUOTE\n"+selected.map(e=>e.item.name+" × "+e.qty+" @ "+money(Number(e.price.value))+" = "+money(Number(e.price.value)*e.qty)).join("\n")+"\nTOTAL: "+money(selected.reduce((s,e)=>s+Number(e.price.value)*e.qty,0));
+  if(selected.some(e=>!Number.isFinite(activePrice(e)))){alert("Set prices in Settings → Pricing Management first.");return;}
+  const result="VANILLA UNICORN — ORDER QUOTE\n"+selected.map(e=>e.item.name+" × "+e.qty+" @ "+money(activePrice(e))+" = "+money(activePrice(e)*e.qty)).join("\n")+"\nTOTAL: "+money(selected.reduce((s,e)=>s+activePrice(e)*e.qty,0));
   if(navigator.clipboard?.writeText)navigator.clipboard.writeText(result).then(()=>alert("Order copied.")).catch(()=>prompt("Copy your order:",result));else prompt("Copy your order:",result);
  });
  document.addEventListener("vu:prices-updated",event=>{
@@ -184,7 +254,9 @@ function setupOrderCalculator(data){
    if(Object.hasOwn(saved,e.key)&&saved[e.key]!==null)e.price.value=String(saved[e.key]);
    else e.price.value="";
   }
+  globalMargin.value=String(saved.__defaultMargin??60);updateDefault();
   calculate();
  });
+ document.addEventListener("vu:costing-updated",event=>{costing=event.detail;calculate();});
  setActive(active,false);setActive(pricingActive,true);calculate();document.dispatchEvent(new Event("vu:pricing-ready"));
 }
