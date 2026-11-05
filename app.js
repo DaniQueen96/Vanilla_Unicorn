@@ -64,7 +64,20 @@ function setupWasteCalculator(recipes){
   const makeList=(title,names,format)=>{results.append(el("h4",null,title));if(!names.length){results.append(el("p","muted","None"));return;}const ul=el("ul");for(const name of names){ul.append(el("li",null,format(name)));}results.append(ul);};
   makeList("Missing — buy from the store",shortage,n=>n+": "+(needed[n]-have[n]));
   makeList("Left over after making these drinks",left,n=>n+": "+(have[n]-(needed[n]||0)));
-  const used=ingredientNames.filter(n=>(needed[n]||0)>0&&!shortage.includes(n));
+  const potential=el("div","vu-potential");potential.append(el("h4",null,"What can I make with my pockets?"));
+  const intro=el("p","muted","Each drink is calculated separately using your current ingredients. Missing amounts are for ONE cocktail, not all cocktails together.");potential.append(intro);
+  const grid=el("div","vu-potential-grid");
+  for(const r of recipes){
+   const ingredients=r.ingredients||[];
+   const max=ingredients.length?Math.min(...ingredients.map(i=>Math.floor((have[i.name]||0)/Number(i.quantity||1)))):0;
+   const missing=ingredients.filter(i=>(have[i.name]||0)<Number(i.quantity||1)).map(i=>i.name+" ×"+(Number(i.quantity||1)-(have[i.name]||0)));
+   const card=el("div","vu-potential-card");
+   const top=el("div","vu-potential-top");top.append(el("strong",null,r.name),el("span",max?"Can make "+max:"Need "+missing.length+" ingredients"));card.append(top);
+   const detail=el("small",null,max?"Enough ingredients for "+max+" cocktail"+(max===1?"":"s"): "To make 1: "+missing.join(", "));
+   card.append(detail);grid.append(card);
+  }
+  potential.append(grid);results.append(potential);
+ const used=ingredientNames.filter(n=>(needed[n]||0)>0&&!shortage.includes(n));
   if(drinks&&!shortage.length)results.append(el("p",null,"This plan can be made with your current ingredients."));
  }
  $("waste-clear").addEventListener("click",()=>{inputs.forEach(input=>input.value="0");calculate();});
