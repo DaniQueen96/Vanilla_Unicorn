@@ -47,59 +47,52 @@
 })();
 
 function setupWasteCalculator(recipes){
- const ingredientNames=[...new Set(recipes.flatMap(r=>(r.ingredients||[]).map(i=>i.name)))].sort((a,b)=>a.localeCompare(b));
- const stock=$("waste-ingredients"),choices=$("waste-recipes"),results=$("waste-results");
- if(!stock||!choices||!results)return;
- const inputs=new Map(),planned=new Map();
- for(const name of ingredientNames){const label=el("label",null,name);const input=document.createElement("input");input.type="number";input.min="0";input.step="1";input.value="0";input.setAttribute("aria-label",name+" in pockets");label.append(input);stock.append(label);inputs.set(name,input);input.addEventListener("input",calculate);}
- for(const r of recipes){const row=el("div","item"),label=el("label",null,r.name+" ");const input=document.createElement("input");input.type="number";input.min="0";input.step="1";input.value="0";input.setAttribute("aria-label",r.name+" quantity to make");label.append(input);row.append(label);choices.append(row);planned.set(r.name,input);input.addEventListener("input",calculate);}
- function available(){return Object.fromEntries([...inputs].map(([name,input])=>[name,Math.max(0,Math.floor(Number(input.value)||0))]));}
- function plan(){return recipes.map(r=>({r,count:Math.max(0,Math.floor(Number(planned.get(r.name).value)||0))}));}
- function calculate(){
-  const have=available(),needed={};let drinks=0;
-  for(const {r,count} of plan()){drinks+=count;for(const ing of r.ingredients||[])needed[ing.name]=(needed[ing.name]||0)+count*Number(ing.quantity||1);}
-  const shortage=ingredientNames.filter(n=>(needed[n]||0)>(have[n]||0)),left=ingredientNames.filter(n=>(have[n]||0)>(needed[n]||0));
-  results.replaceChildren();const heading=el("h3",null,"Your ingredient plan");results.append(heading);
-  results.append(el("p",null,drinks+" cocktails planned · "+(shortage.length?shortage.length+" ingredients to buy":"Enough ingredients for this plan")));
-  const makeList=(title,names,format)=>{results.append(el("h4",null,title));if(!names.length){results.append(el("p","muted","None"));return;}const ul=el("ul");for(const name of names){ul.append(el("li",null,format(name)));}results.append(ul);};
-  makeList("Missing — buy from the store",shortage,n=>n+": "+(needed[n]-have[n]));
-  makeList("Left over after making these drinks",left,n=>n+": "+(have[n]-(needed[n]||0)));
-  const potential=el("div","vu-potential");potential.append(el("h4",null,"What can I make with my pockets?"));
-  const intro=el("p","muted","Each drink is calculated separately using your current ingredients. Missing amounts are for ONE cocktail, not all cocktails together.");potential.append(intro);
-  const grid=el("div","vu-potential-grid");
+ const $id=id=>document.getElementById(id),names=[...new Set(recipes.flatMap(r=>(r.ingredients||[]).map(i=>i.name)))].sort((a,b)=>a.localeCompare(b));
+ const stock=new Map(),targets=new Map(),pick=$id("waste-pick"),chips=$id("waste-ingredients"),results=$id("waste-results"),planResults=$id("waste-plan-results");
+ if(!pick||!chips||!results||!planResults)return;
+ for(const name of names){const option=document.createElement("option");option.value=name;option.textContent=name;pick.append(option);}
+ for(const r of recipes){const label=el("label",null,r.name);const input=document.createElement("input");input.type="number";input.min="0";input.step="1";input.value="0";input.setAttribute("aria-label",r.name+" quantity");input.addEventListener("input",render);label.append(input);$id("waste-recipes").append(label);targets.set(r.name,input);}
+ const have=name=>stock.get(name)||0;
+ function render(){
+  chips.replaceChildren();let total=0;
+  for(const [name,qty] of [...stock].sort((a,b)=>a[0].localeCompare(b[0]))){if(qty<=0)continue;total+=qty;
+   const chip=el("div","vu-pocket-chip"),label=el("span",null,name+" ×"+qty),minus=document.createElement("button"),plus=document.createElement("button"),remove=document.createElement("button");
+   minus.type=plus.type=remove.type="button";minus.textContent="−";plus.textContent="+";remove.textContent="×";
+   minus.setAttribute("aria-label","Remove one "+name);plus.setAttribute("aria-label","Add one "+name);remove.setAttribute("aria-label","Remove "+name);
+   minus.onclick=()=>{stock.set(name,Math.max(0,have(name)-1));render();};plus.onclick=()=>{stock.set(name,have(name)+1);render();};remove.onclick=()=>{stock.delete(name);render();};
+   chip.append(label,minus,plus,remove);chips.append(chip);
+  }
+  $id("waste-stock-count").textContent="("+total+")";
+  if(!total)chips.append(el("p","muted","Nothing added yet. Select an ingredient above."));
+  results.replaceChildren();
+  const ready=[],missing=[];
   for(const r of recipes){
-   const ingredients=r.ingredients||[];
-   const max=ingredients.length?Math.min(...ingredients.map(i=>Math.floor((have[i.name]||0)/Number(i.quantity||1)))):0;
-   const missing=ingredients.filter(i=>(have[i.name]||0)<Number(i.quantity||1)).map(i=>i.name+" ×"+(Number(i.quantity||1)-(have[i.name]||0)));
-   const card=el("div","vu-potential-card");
-   const top=el("div","vu-potential-top");top.append(el("strong",null,r.name),el("span",max?"Can make "+max:"Need "+missing.length+" ingredients"));card.append(top);
-   const detail=el("small",null,max?"Enough ingredients for "+max+" cocktail"+(max===1?"":"s"): "To make 1: "+missing.join(", "));
-   card.append(detail);grid.append(card);
+   const req=r.ingredients||[],max=req.length?Math.min(...req.map(i=>Math.floor(have(i.name)/Number(i.quantity||1)))):0;
+   const short=req.filter(i=>have(i.name)<Number(i.quantity||1)).map(i=>i.name+" ×"+(Number(i.quantity||1)-have(i.name)));
+   (max?ready:missing).push({r,max,short});
   }
-  potential.append(grid);results.append(potential);
- const used=ingredientNames.filter(n=>(needed[n]||0)>0&&!shortage.includes(n));
-  if(drinks&&!shortage.length)results.append(el("p",null,"This plan can be made with your current ingredients."));
+  const readyPanel=el("div","vu-waste-result-section");readyPanel.append(el("h3",null,"Ready to make · "+ready.length));
+  if(!ready.length)readyPanel.append(el("p","muted","No complete cocktails yet. Add ingredients to see your options."));
+  for(const x of ready){const line=el("div","vu-waste-result-row");line.append(el("strong",null,x.r.name),el("span",null,"Up to "+x.max));readyPanel.append(line);}
+  results.append(readyPanel);
+  const details=document.createElement("details");details.className="vu-waste-missing";const summary=document.createElement("summary");summary.textContent="Almost there · "+missing.length+" other cocktails (show what's missing)";details.append(summary);
+  for(const x of missing){const line=el("div","vu-waste-result-row");line.append(el("strong",null,x.r.name),el("span",null,x.short.join(", ")));details.append(line);}
+  results.append(details);
+  const needed={};let count=0;
+  for(const r of recipes){const n=Math.max(0,Math.floor(Number(targets.get(r.name).value)||0));count+=n;for(const i of r.ingredients||[])needed[i.name]=(needed[i.name]||0)+n*Number(i.quantity||1);}
+  planResults.replaceChildren();if(count){planResults.append(el("h4",null,"For "+count+" planned cocktails"));const shortage=names.filter(n=>(needed[n]||0)>have(n)),left=names.filter(n=>have(n)>(needed[n]||0));planResults.append(el("p",null,shortage.length?"Buy: "+shortage.map(n=>n+" ×"+(needed[n]-have(n))).join(", "):"You have everything needed."));if(left.length)planResults.append(el("p","muted","Left over: "+left.map(n=>n+" ×"+(have(n)-(needed[n]||0))).join(", "));}
  }
- $("waste-clear").addEventListener("click",()=>{inputs.forEach(input=>input.value="0");calculate();});
- $("waste-reset").addEventListener("click",()=>{planned.forEach(input=>input.value="0");calculate();});
- $("waste-suggest").addEventListener("click",()=>{
-  const remain=available(),counts=new Map(recipes.map(r=>[r.name,0]));let iterations=0;
-  // Greedy heuristic: prefer drinks using ingredients with fewer alternative uses,
-  // then choose the recipe consuming the most currently available ingredients.
-  const uses=Object.fromEntries(ingredientNames.map(n=>[n,recipes.filter(r=>r.ingredients.some(i=>i.name===n)).length]));
-  while(iterations++<1000){
-   const candidates=recipes.filter(r=>r.ingredients?.length&&r.ingredients.every(i=>(remain[i.name]||0)>=Number(i.quantity||1)));
-   if(!candidates.length)break;
-   candidates.sort((a,b)=>{const score=r=>r.ingredients.reduce((sum,i)=>sum+Number(i.quantity||1)/(uses[i.name]||1),0);return score(b)-score(a)||a.name.localeCompare(b.name);});
-   const chosen=candidates[0];counts.set(chosen.name,counts.get(chosen.name)+1);
-   chosen.ingredients.forEach(i=>remain[i.name]-=Number(i.quantity||1));
-  }
-  counts.forEach((count,name)=>planned.get(name).value=String(count));calculate();
-  results.prepend(el("p","muted","Suggested combination uses a greedy no-waste approach; other combinations may use more ingredients."));
- });
- calculate();
+ $id("waste-add").onclick=()=>{const qty=Number($id("waste-add-quantity").value);if(!Number.isInteger(qty)||qty<1)return;stock.set(pick.value,have(pick.value)+qty);$id("waste-add-quantity").value="1";render();};
+ $id("waste-clear").onclick=()=>{stock.clear();render();};
+ $id("waste-reset").onclick=()=>{targets.forEach(i=>i.value="0");render();};
+ $id("waste-suggest").onclick=()=>{
+  const remain=Object.fromEntries(names.map(n=>[n,have(n)])),counts=new Map(recipes.map(r=>[r.name,0]));
+  for(let j=0;j<1000;j++){const possible=recipes.filter(r=>r.ingredients?.length&&r.ingredients.every(i=>(remain[i.name]||0)>=Number(i.quantity||1)));if(!possible.length)break;
+   possible.sort((a,b)=>b.ingredients.length-a.ingredients.length||a.name.localeCompare(b.name));const r=possible[0];counts.set(r.name,counts.get(r.name)+1);r.ingredients.forEach(i=>remain[i.name]-=Number(i.quantity||1));}
+  counts.forEach((n,name)=>targets.get(name).value=String(n));render();
+ };
+ render();
 }
-
 
 function setupOrderCalculator(data){
  const root=document.getElementById("order-categories");if(!root)return;
