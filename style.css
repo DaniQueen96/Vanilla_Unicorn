@@ -128,3 +128,31 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 .vu-order-summary-line{padding:7px 0;border-bottom:1px solid rgba(255,255,255,.08)}
 .vu-order-item[hidden],.vu-order-category[hidden]{display:none!important}
 @media(max-width:650px){.vu-calc-panel>summary{padding:16px;font-size:17px}.vu-calc-content{padding:8px 12px 18px}.vu-order-item{grid-template-columns:minmax(90px,1fr) 90px 65px;gap:6px}.vu-order-line-total{grid-column:1/-1;text-align:right}.vu-order-total strong{font-size:18px}}
+
+/* Compact calculator redesign */
+.vu-calc-panel{margin:12px 0;border-radius:14px;background:rgba(31,16,35,.58)}
+.vu-calc-panel>summary{padding:15px 18px;font-size:17px;gap:8px}
+.vu-calc-panel>summary small{font-size:12px}
+.vu-calc-content{padding:10px 18px 18px}
+.vu-order-category{margin:7px 0;border-radius:10px}
+.vu-order-category>summary{padding:10px 13px;font-size:14px}
+.vu-order-items{padding:3px 12px}
+.vu-order-item{padding:6px 0;grid-template-columns:minmax(100px,1fr) 100px 68px 90px;gap:9px;font-size:13px}
+.vu-order-item input{padding:7px 8px;min-height:34px}
+.vu-order-total{margin:12px 0;padding:12px 16px}
+.vu-order-total strong{font-size:20px}
+.vu-waste-layout{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+#waste-ingredients{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px}
+#waste-ingredients label{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:13px}
+#waste-ingredients input{width:66px;flex:none;padding:7px}
+#waste-recipes .item{padding:5px 8px;margin:3px 0}
+#waste-recipes label{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;font-size:13px}
+#waste-recipes input{width:66px;flex:none;padding:7px}
+#waste-results{margin-top:14px;padding:14px;border:1px solid rgba(255,255,255,.12);border-radius:12px}
+.vu-potential{margin-top:16px;border-top:1px solid rgba(255,255,255,.12);padding-top:12px}
+.vu-potential-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}
+.vu-potential-card{border:1px solid rgba(255,125,202,.2);background:rgba(255,111,188,.055);padding:10px;border-radius:10px}
+.vu-potential-top{display:flex;justify-content:space-between;gap:10px;align-items:start;font-size:13px}
+.vu-potential-top span{font-size:11px;color:#ffb4df;white-space:nowrap}
+.vu-potential-card small{display:block;margin-top:6px;color:#d4c2d1;line-height:1.4}
+@media(max-width:750px){.vu-waste-layout{grid-template-columns:1fr}.vu-order-item{grid-template-columns:minmax(85px,1fr) 85px 60px}.vu-order-line-total{grid-column:1/-1}.vu-calc-panel>summary small{width:100%}}
