@@ -11,3 +11,27 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 
 /* Owner-only incident records */
 #incidents form{display:grid;gap:12px;max-width:850px}#incidents form button{justify-self:start}#incidents .incident-row{display:flex;justify-content:space-between;align-items:start;gap:20px}#incidents .incident-row>div:first-child{min-width:0;overflow-wrap:anywhere}#incidents .incident-actions{display:flex;flex-wrap:wrap;gap:8px}#incident-message{color:#ffb4d5;min-height:20px}@media(max-width:650px){#incidents .incident-row{flex-direction:column}}
+
+/* Recipe Costing Studio: image-led ingredient cards */
+#costing{max-width:1000px}#costing-prices{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+#costing-prices .ingredient-price-row{justify-content:flex-start;align-items:center;gap:14px}
+#costing-prices .ingredient-price-row label{flex:1;margin:0;min-width:0}
+#costing-prices .ingredient-price-row input{width:100%;max-width:none}
+.vu-item-icon{width:56px;height:56px;object-fit:contain;flex:none;background:radial-gradient(circle,#473045,#231722);border:1px solid #674361;border-radius:13px;padding:7px}
+.vu-item-icon.icon-fallback{opacity:.45;padding:13px}
+#costing-recipes{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start}
+#costing .costing-recipe{display:block;padding:22px;background:linear-gradient(145deg,#2b192b,#171019);border:1px solid #73436b}
+#costing .costing-recipe h3{font-size:23px;color:#ffd0ec;margin:0 0 5px}
+#costing .costing-recipe>label{max-width:210px}
+#costing .costing-recipe input{width:100%;max-width:none}
+#costing .costing-ingredients{display:grid;gap:10px;margin:16px 0}
+#costing .costing-ingredient{display:grid;grid-template-columns:56px minmax(0,1fr) 90px auto;align-items:end;gap:9px;background:#160f19;border:1px solid #51324d;border-radius:12px;padding:10px}
+#costing .costing-ingredient .vu-item-icon{align-self:center}
+#costing .costing-ingredient label{min-width:0;margin:0;font-size:12px}
+#costing .costing-ingredient input{width:100%;margin-top:5px}
+#costing .costing-ingredient button{padding:10px;font-size:12px}
+#costing .costing-total{padding:12px;background:#352139;border-radius:10px;color:#ffe2f3;font-weight:700}
+@media(max-width:600px){#costing .costing-ingredient{grid-template-columns:42px minmax(0,1fr) 75px}#costing .costing-ingredient .vu-item-icon{width:42px;height:42px}#costing .costing-ingredient button{grid-column:2/4;justify-self:end}}
+
+#drink-list .drink-line-details,#package-options .drink-line-details{display:flex;align-items:center;gap:12px;min-width:0}
+#drink-list .item,#package-options .item{min-height:80px}

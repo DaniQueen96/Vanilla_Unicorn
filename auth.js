@@ -256,6 +256,18 @@ async function setupCosting() {
   let state={prices:{},recipes:defaults.map(([name,yieldCount,ingredients])=>({name,yieldCount,ingredients:ingredients.map(name=>({name,qty:1}))}))};
   try{const snap=await getDoc(ref);if(snap.exists()){const d=snap.data();if(d.prices&&d.recipes)state={prices:d.prices,recipes:d.recipes};}}catch(e){status.textContent="Unable to load saved prices: "+e.message;}
   const money=n=>Number.isFinite(n)?"$"+n.toFixed(2):"Not priced";
+  const iconBase="https://p17.admin.opfw.me/images/icons/items/";
+  const iconAliases={"Sprite":"sprunk","Mint Leaf":"mint_leaf","Hot Pepper":"hot_pepper","Tomato Juice":"tomato_juice","Pigeon Milk":"pigeon_milk","Coco Powder":"cocoa_powder","Angostura Bitters":"angostura_bitters"};
+  function itemIcon(name){
+    const raw=iconAliases[name]||String(name).trim().toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
+    return iconBase+encodeURIComponent(raw)+".png";
+  }
+  function imageFor(name){
+    const img=document.createElement("img");img.className="vu-item-icon";img.alt="";
+    img.loading="lazy";img.src=itemIcon(name);
+    img.onerror=()=>{img.onerror=null;img.src="assets/vu-unicorn.svg";img.classList.add("icon-fallback")};
+    return img;
+  }
   const ingredients=()=>[...new Set(state.recipes.flatMap(r=>r.ingredients.map(i=>i.name)))].sort((a,b)=>a.localeCompare(b));
   let saveChain=Promise.resolve();
   function save(){const snapshot=JSON.parse(JSON.stringify(state));status.textContent="Saving…";saveChain=saveChain.catch(()=>{}).then(async()=>{try{await setDoc(ref,{...snapshot,updatedAt:serverTimestamp()});status.textContent="Saved to your private owner account.";}catch(e){status.textContent="Save failed: "+e.message;}});return saveChain;}
@@ -264,16 +276,18 @@ async function setupCosting() {
     pricesEl.replaceChildren();recipesEl.replaceChildren();
     for(const name of ingredients()){
       const row=document.createElement("div");row.className="item";
+      row.classList.add("ingredient-price-row");row.prepend(imageFor(name));
       row.append(field(name+" — purchase cost per unit ($)",state.prices[name]??"",v=>{if(v==="")delete state.prices[name];else if(Number.isFinite(Number(v))&&Number(v)>=0)state.prices[name]=Number(v);save();render()},"number"));
       pricesEl.append(row);
     }
     state.recipes.forEach((recipe,index)=>{
       const box=document.createElement("article");box.className="item costing-recipe";
       const heading=document.createElement("h3");heading.textContent=recipe.name;box.append(heading);
+      const recipeMeta=document.createElement("p");recipeMeta.className="muted";recipeMeta.textContent=recipe.ingredients.length+" ingredients · Editable recipe";box.append(recipeMeta);
       box.append(field("Servings produced",recipe.yieldCount,v=>{const n=Number(v);if(Number.isInteger(n)&&n>0){recipe.yieldCount=n;save();render()}},"number"));
       const ingredientWrap=document.createElement("div");ingredientWrap.className="costing-ingredients";
       recipe.ingredients.forEach((item,j)=>{
-        const line=document.createElement("div");line.className="costing-ingredient";
+        const line=document.createElement("div");line.className="costing-ingredient";line.append(imageFor(item.name));
         line.append(field("Ingredient",item.name,v=>{item.name=v.trim();save();render()}));
         line.append(field("Quantity",item.qty,v=>{const n=Number(v);if(Number.isFinite(n)&&n>0){item.qty=n;save();render()}},"number"));
         const remove=document.createElement("button");remove.type="button";remove.textContent="Remove";remove.onclick=()=>{recipe.ingredients.splice(j,1);save();render()};line.append(remove);ingredientWrap.append(line);
