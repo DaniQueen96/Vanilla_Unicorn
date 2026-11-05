@@ -1,4 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
 // Firebase web app identifiers are public; passwords and admin credentials are never stored here.
@@ -12,7 +13,11 @@ const firebaseConfig = {
 };
 const OWNER_UID = "MdjPO1WYwlb97hitjqUXLWHOXd12";
 const OWNER_EMAIL = "vu-owner@staff.vu";
-const auth = getAuth(initializeApp(firebaseConfig));
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
+let stopStaffListener = null;
+let staffInitialized = false;
 const screen = document.getElementById("auth-screen");
 const app = document.getElementById("protected-app");
 const logout = document.getElementById("logout-button");
@@ -47,6 +52,14 @@ onAuthStateChanged(auth, (user) => {
   app.classList.toggle("hidden", !owner);
   logout.classList.toggle("hidden", !owner);
   document.getElementById("signed-in-label").textContent = owner ? "VU Owner" : "Drinks · Events · Bookings";
+  if (owner && !staffInitialized) {
+    staffInitialized = true;
+    setupStaffManagement();
+  }
+  if (!owner && stopStaffListener) {
+    stopStaffListener(); stopStaffListener = null; staffInitialized = false;
+    document.getElementById("staff-list").replaceChildren();
+  }
   if (owner && !appLoaded) {
     appLoaded = true;
     const script = document.createElement("script");
@@ -59,3 +72,57 @@ onAuthStateChanged(auth, (user) => {
   status.textContent = "Could not connect to Firebase. Check the Firebase configuration.";
   console.error("Authentication state error:", error);
 });
+
+function setupStaffManagement() {
+  const list = document.getElementById("staff-list");
+  const message = document.getElementById("staff-message");
+  const form = document.getElementById("staff-form");
+  let employees = [];
+  stopStaffListener = onSnapshot(collection(db, "staffProfiles"), (snapshot) => {
+    employees = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    employees.sort((a,b) => a.name.localeCompare(b.name));
+    list.replaceChildren();
+    if (!employees.length) {
+      const empty = document.createElement("p");
+      empty.textContent = "No employees added yet. You're currently the only VU staff member.";
+      list.append(empty);
+    }
+    for (const employee of employees) {
+      const row = document.createElement("div"); row.className = "item";
+      const details = document.createElement("div");
+      const title = document.createElement("strong"); title.textContent = employee.name;
+      const sub = document.createElement("div"); sub.className = "muted";
+      sub.textContent = employee.username + " · " + (employee.roles || []).join(", ") + " · Profile only (login not activated)";
+      details.append(title, sub);
+      const remove = document.createElement("button"); remove.type = "button"; remove.textContent = "Remove";
+      remove.addEventListener("click", async () => {
+        if (!confirm("Remove the profile for " + employee.name + "?")) return;
+        try { await deleteDoc(doc(db, "staffProfiles", employee.id)); }
+        catch (e) { message.textContent = "Could not remove employee: " + e.message; }
+      });
+      row.append(details, remove); list.append(row);
+    }
+  }, (error) => {
+    list.textContent = "Unable to load staff records. Check your Firestore rules.";
+    console.error(error);
+  });
+  if (form.dataset.bound) return;
+  form.dataset.bound = "true";
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    message.textContent = "";
+    const name = document.getElementById("staff-name").value.trim();
+    const username = document.getElementById("staff-username").value.trim();
+    const roles = [...form.querySelectorAll('input[name="staff-role"]:checked')].map(e => e.value);
+    if (!name || !/^[-_a-zA-Z0-9]{3,32}$/.test(username) || !roles.length) {
+      message.textContent = "Enter a name, valid username and at least one role."; return;
+    }
+    if (username.toLowerCase() === "vu-owner" || employees.some(e => e.username.toLowerCase() === username.toLowerCase())) {
+      message.textContent = "That username is already reserved or in use."; return;
+    }
+    try {
+      await addDoc(collection(db, "staffProfiles"), { name, username, roles, status: "pending", createdAt: serverTimestamp() });
+      form.reset(); message.textContent = "Employee profile saved. Login activation is not available yet.";
+    } catch (error) { message.textContent = "Could not save: " + error.message; }
+  });
+}
