@@ -17,6 +17,8 @@ const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 const db = getFirestore(firebaseApp);
 let stopStaffListener = null;
+let stopIncidentListener = null;
+let incidentsInitialized = false;
 let staffInitialized = false;
 let eventsInitialized = false;
 let stopEventsListener = null;
@@ -54,6 +56,8 @@ onAuthStateChanged(auth, (user) => {
   app.classList.toggle("hidden", !owner);
   logout.classList.toggle("hidden", !owner);
   document.getElementById("signed-in-label").textContent = owner ? "VU Owner" : "Drinks · Events · Bookings";
+  if (owner && !incidentsInitialized) { incidentsInitialized = true; setupIncidents(); }
+  if (!owner && stopIncidentListener) { stopIncidentListener(); stopIncidentListener = null; incidentsInitialized = false; document.getElementById("incident-list").replaceChildren(); }
   if (owner && !eventsInitialized) { eventsInitialized = true; setupEvents(); }
   if (!owner && stopEventsListener) { stopEventsListener(); stopEventsListener = null; eventsInitialized = false; }
   if (owner && !staffInitialized) {
@@ -180,5 +184,50 @@ function setupEvents() {
       msg.textContent = "Event published. It will appear on the public events page.";
       form.reset();
     } catch(e) {msg.textContent = "Could not publish: " + e.message;}
+  });
+}
+
+
+// Private management records. Firestore rules restrict the collection to the owner.
+function setupIncidents() {
+  const form = document.getElementById("incident-form");
+  const list = document.getElementById("incident-list");
+  const message = document.getElementById("incident-message");
+  const get = id => document.getElementById("incident-" + id).value.trim();
+  const format = record => [
+    "VANILLA UNICORN — " + record.type.toUpperCase(),
+    "Date/time: " + record.when,
+    "Subject: " + record.title,
+    "People: " + (record.people || "Not recorded"),
+    "Details: " + record.details,
+    "Action: " + (record.action || "Not recorded"),
+    "Status: " + record.status
+  ].join("\n");
+  stopIncidentListener = onSnapshot(collection(db, "managementIncidents"), snapshot => {
+    const entries = snapshot.docs.map(d => ({id:d.id,...d.data()})).sort((a,b) => (b.when || "").localeCompare(a.when || ""));
+    list.replaceChildren();
+    if (!entries.length) { const p=document.createElement("p");p.textContent="No reports recorded yet.";list.append(p); }
+    for (const entry of entries) {
+      const row=document.createElement("article");row.className="item incident-row";
+      const info=document.createElement("div");const title=document.createElement("strong");title.textContent=entry.title;
+      const meta=document.createElement("p");meta.className="muted";meta.textContent=entry.type+" · "+entry.when+" · "+entry.status;
+      const details=document.createElement("p");details.className="muted";details.textContent=entry.details;
+      info.append(title,meta,details);
+      const controls=document.createElement("div");controls.className="incident-actions";
+      const copy=document.createElement("button");copy.type="button";copy.textContent="Copy Report";
+      copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(format(entry));message.textContent="Report copied. Paste it into Discord manually."; }catch{message.textContent="Clipboard unavailable; use a secure browser connection."; }});
+      const remove=document.createElement("button");remove.type="button";remove.textContent="Delete";
+      remove.addEventListener("click",async()=>{if(!confirm("Permanently delete this report?"))return;try{await deleteDoc(doc(db,"managementIncidents",entry.id));message.textContent="Report deleted."}catch(e){message.textContent="Delete failed: "+e.message}});
+      controls.append(copy,remove);row.append(info,controls);list.append(row);
+    }
+  }, error => {list.textContent="Unable to load reports: "+error.message;});
+  if (form.dataset.bound) return;
+  form.dataset.bound="true";
+  form.addEventListener("submit",async e=>{
+    e.preventDefault();message.textContent="Saving report…";
+    const data={type:get("type"),when:get("when"),title:get("title"),people:get("people"),details:get("details"),action:get("action"),status:get("status"),createdAt:serverTimestamp()};
+    if (!data.when || !data.title || !data.details) {message.textContent="Complete the date, title and details.";return;}
+    try{await addDoc(collection(db,"managementIncidents"),data);form.reset();message.textContent="Private report saved.";}
+    catch(error){message.textContent="Save failed: "+error.message;}
   });
 }
