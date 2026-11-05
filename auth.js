@@ -257,8 +257,8 @@ async function setupCosting() {
   try{const snap=await getDoc(ref);if(snap.exists()){const d=snap.data();if(d.prices&&d.recipes)state={prices:d.prices,recipes:d.recipes};}}catch(e){status.textContent="Unable to load saved prices: "+e.message;}
   const money=n=>Number.isFinite(n)?"$"+n.toFixed(2):"Not priced";
   const ingredients=()=>[...new Set(state.recipes.flatMap(r=>r.ingredients.map(i=>i.name)))].sort((a,b)=>a.localeCompare(b));
-  let pending=false;
-  async function save(){if(pending)return;pending=true;status.textContent="Saving…";try{await setDoc(ref,{prices:state.prices,recipes:state.recipes,updatedAt:serverTimestamp()});status.textContent="Saved to your private owner account.";}catch(e){status.textContent="Save failed: "+e.message;}finally{pending=false;}}
+  let saveChain=Promise.resolve();
+  function save(){const snapshot=JSON.parse(JSON.stringify(state));status.textContent="Saving…";saveChain=saveChain.catch(()=>{}).then(async()=>{try{await setDoc(ref,{...snapshot,updatedAt:serverTimestamp()});status.textContent="Saved to your private owner account.";}catch(e){status.textContent="Save failed: "+e.message;}});return saveChain;}
   function field(label,value,change,type="text"){const l=document.createElement("label");l.textContent=label;const input=document.createElement("input");input.type=type;input.value=value;input.addEventListener("change",()=>change(input.value));l.append(input);return l;}
   function render(){
     pricesEl.replaceChildren();recipesEl.replaceChildren();
