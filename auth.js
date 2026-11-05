@@ -242,22 +242,39 @@ async function setupCosting() {
   const pricesEl=document.getElementById("costing-prices");
   const recipesEl=document.getElementById("costing-recipes");
   const defaults=[
-    ["Whiskey Sour",1,["Lemon","Whiskey","Egg","Sugar"]],
+    ["Whiskey Sour",1,["Lemon","Whiskey","Eggs","Sugar"]],
     ["Pina Colada",2,["Rum","Pineapple","Coconut"]],
-    ["Bloody Mary",1,["Lemon","Hot Pepper","Salt","Vodka","Tomato Juice"]],
-    ["Shirley Temple (N/A)",2,["Sprite","Cherry","Grenadine"]],
-    ["Rainbow Rush",2,["Sprite","Skittles","Vodka"]],
-    ["Mojito",1,["Sprite","Sugar","Lime","Rum","Mint Leaf"]],
+    ["Bloody Mary",1,["Lemon","Chili Peppers","Salt","Vodka","Tomato Juice"]],
+    ["Shirley Temple (N/A)",2,["Sprunk","Cherry","Grenadine"]],
+    ["Rainbow Rush",2,["Sprunk","Skittles","Vodka"]],
+    ["Mojito",1,["Sprunk","Sugar","Lime","Rum","Mint Leaves"]],
     ["Old Fashioned",1,["Whiskey","Orange","Sugar","Angostura Bitters"]],
     ["Margarita",1,["Lime","Tequila","Orange","Sugar"]],
-    ["Salty Pigeon",1,["Pigeon Milk","Vodka","Coco Powder","Salt"]]
+    ["Salty Pigeon",1,["Pigeon Milk","Vodka","Cocoa Powder","Salt"]]
   ];
+  const storeItems=[
+    ["Whiskey",65,2],["Rum",78,2],["Vodka",50,2],["Tequila",25,2],["Absinthe",52,2],
+    ["Beer",12,1],["Cider",18,2],["Koka",10,1],["Frezzi",10,1],["Sprunk",10,1],
+    ["Tanga",10,1],["Sweet Tea",12,1],["Green Cow",20,3],["Tomato Juice",15,2],
+    ["Pigeon Milk",32,1],["Almond Milk",28,1],["Water",4,1],["Angostura Bitters",32,3],
+    ["Grenadine",26,3],["Sugar",6,8],["Salt",8,2],["Cocoa Powder",10,2],
+    ["Lemon",6,1],["Lime",6,1],["Orange",8,1],["Cherry",4,1],["Pineapple",14,5],
+    ["Coconut",10,6],["Mint Leaves",6,2],["Olives",14,2],["Chili Peppers",6,1],
+    ["Eggs",8,2],["Hot Dog",10,1],["Ham Sandwich",16,1],["Nachos",10,2],
+    ["Salted Peanuts",12,2],["S'mores",20,1],["Skittles",10,2],["Paper Straw",1,1]
+  ];
+  const canonicalNames={"Sprite":"Sprunk","Hot Pepper":"Chili Peppers","Egg":"Eggs","Mint Leaf":"Mint Leaves","Coco Powder":"Cocoa Powder"};
+  const storePrices=Object.fromEntries(storeItems.map(([name,price])=>[name,price]));
+  const storeSU=Object.fromEntries(storeItems.map(([name,,su])=>[name,su]));
   const ref=doc(db,"ownerSettings","recipeCosting");
   let state={prices:{},recipes:defaults.map(([name,yieldCount,ingredients])=>({name,yieldCount,ingredients:ingredients.map(name=>({name,qty:1}))}))};
   try{const snap=await getDoc(ref);if(snap.exists()){const d=snap.data();if(d.prices&&d.recipes)state={prices:d.prices,recipes:d.recipes};}}catch(e){status.textContent="Unable to load saved prices: "+e.message;}
+  for(const recipe of state.recipes)for(const ingredient of recipe.ingredients)ingredient.name=canonicalNames[ingredient.name]||ingredient.name;
+  for(const [oldName,newName] of Object.entries(canonicalNames)){if(state.prices[oldName]!==undefined&&state.prices[newName]===undefined)state.prices[newName]=state.prices[oldName];delete state.prices[oldName];}
+  for(const [name,price] of Object.entries(storePrices))if(state.prices[name]===undefined)state.prices[name]=price;
   const money=n=>Number.isFinite(n)?"$"+n.toFixed(2):"Not priced";
   const iconBase="https://p17.admin.opfw.me/images/icons/items/";
-  const iconAliases={"Sprite":"sprunk","Mint Leaf":"mint_leaf","Hot Pepper":"hot_pepper","Tomato Juice":"tomato_juice","Pigeon Milk":"pigeon_milk","Coco Powder":"cocoa_powder","Angostura Bitters":"angostura_bitters"};
+  const iconAliases={"Mint Leaves":"mint_leaves","Chili Peppers":"chili_peppers","Tomato Juice":"tomato_juice","Pigeon Milk":"pigeon_milk","Cocoa Powder":"cocoa_powder","Angostura Bitters":"angostura_bitters"};
   function itemIcon(name){
     const raw=iconAliases[name]||String(name).trim().toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
     return iconBase+encodeURIComponent(raw)+".png";
@@ -268,7 +285,7 @@ async function setupCosting() {
     img.onerror=()=>{img.onerror=null;img.src="assets/vu-unicorn.svg";img.classList.add("icon-fallback")};
     return img;
   }
-  const ingredients=()=>[...new Set(state.recipes.flatMap(r=>r.ingredients.map(i=>i.name)))].sort((a,b)=>a.localeCompare(b));
+  const ingredients=()=>storeItems.map(([name])=>name);
   let saveChain=Promise.resolve();
   function save(){const snapshot=JSON.parse(JSON.stringify(state));status.textContent="Saving…";saveChain=saveChain.catch(()=>{}).then(async()=>{try{await setDoc(ref,{...snapshot,updatedAt:serverTimestamp()});status.textContent="Saved to your private owner account.";}catch(e){status.textContent="Save failed: "+e.message;}});return saveChain;}
   function field(label,value,change,type="text"){const l=document.createElement("label");l.textContent=label;const input=document.createElement("input");input.type=type;input.value=value;input.addEventListener("change",()=>change(input.value));l.append(input);return l;}
@@ -277,7 +294,7 @@ async function setupCosting() {
     for(const name of ingredients()){
       const row=document.createElement("div");row.className="item";
       row.classList.add("ingredient-price-row");row.prepend(imageFor(name));
-      row.append(field(name+" — purchase cost per unit ($)",state.prices[name]??"",v=>{if(v==="")delete state.prices[name];else if(Number.isFinite(Number(v))&&Number(v)>=0)state.prices[name]=Number(v);save();render()},"number"));
+      row.append(field(name+" · "+storeSU[name]+" SU — purchase cost ($)",state.prices[name]??"",v=>{if(v==="")delete state.prices[name];else if(Number.isFinite(Number(v))&&Number(v)>=0)state.prices[name]=Number(v);save();render()},"number"));
       pricesEl.append(row);
     }
     state.recipes.forEach((recipe,index)=>{
@@ -288,7 +305,7 @@ async function setupCosting() {
       const ingredientWrap=document.createElement("div");ingredientWrap.className="costing-ingredients";
       recipe.ingredients.forEach((item,j)=>{
         const line=document.createElement("div");line.className="costing-ingredient";line.append(imageFor(item.name));
-        line.append(field("Ingredient",item.name,v=>{item.name=v.trim();save();render()}));
+        line.append(field("Ingredient",item.name,v=>{item.name=canonicalNames[v.trim()]||v.trim();save();render()}));
         line.append(field("Quantity",item.qty,v=>{const n=Number(v);if(Number.isFinite(n)&&n>0){item.qty=n;save();render()}},"number"));
         const remove=document.createElement("button");remove.type="button";remove.textContent="Remove";remove.onclick=()=>{recipe.ingredients.splice(j,1);save();render()};line.append(remove);ingredientWrap.append(line);
       });box.append(ingredientWrap);
