@@ -2,3 +2,5 @@
 .auth-screen{min-height:65vh;display:grid;place-items:center;padding:35px 18px}.auth-card{width:min(100%,430px);background:#1d141e;border:1px solid #6b345a;border-radius:20px;padding:32px;box-shadow:0 20px 80px #0007}.auth-card h2{margin:12px 0}.auth-card form button{width:100%;background:#a62f77;margin-top:14px}.auth-symbol{font-size:45px;color:#ef7bb9}.auth-card #login-message{min-height:22px;color:#ffb5bd;font-size:14px}.auth-card input{margin-bottom:16px}#logout-button{padding:8px 12px;margin-left:10px}
 
 .auth-screen.hidden{display:none}
+
+.role-picker{border:1px solid #62435a;border-radius:12px;margin:18px 0;padding:12px 18px}.role-picker legend{color:#e9c8df;padding:0 8px}.role-picker label{display:inline-flex;align-items:center;gap:8px;margin:9px 18px 9px 0}.role-picker input{width:auto;margin:0;accent-color:#d85d9d}#staff-message{min-height:22px;color:#f6a9d0}#staff .item{margin-bottom:10px}#staff .muted{color:#bfa9ba;font-size:13px;margin-top:6px}
