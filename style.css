@@ -35,3 +35,20 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 
 #drink-list .drink-line-details,#package-options .drink-line-details{display:flex;align-items:center;gap:12px;min-width:0}
 #drink-list .item,#package-options .item{min-height:80px}
+
+/* Premium bar catalogue */
+#drinks,#packages{max-width:1060px}
+#drink-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+#drink-list .item{position:relative;display:flex;flex-direction:column;align-items:stretch;justify-content:space-between;min-height:265px;padding:20px;border-radius:20px;background:radial-gradient(circle at 25% 12%,#55304b 0%,#281a2a 45%,#19121d 100%);border:1px solid #70445f;box-shadow:0 12px 30px #0003;transition:transform .2s,border-color .2s}
+#drink-list .item:hover{transform:translateY(-3px);border-color:#e17ab8}
+#drink-list .drink-line-details{flex-direction:column;align-items:flex-start;gap:12px}
+#drink-list .vu-item-icon{width:112px;height:112px;padding:10px;border-radius:18px;align-self:center;background:radial-gradient(circle,#6b3b60,#302034 75%);border:1px solid #845077;filter:drop-shadow(0 9px 9px #0005)}
+#drink-list .drink-line-details>div{width:100%}
+#drink-list .drink-line-details strong{font-size:21px;letter-spacing:.01em}
+#drink-list .drink-line-details .muted{margin-top:5px;font-size:14px;color:#eab8d3}
+#drink-list .item input{width:100%;max-width:none;margin:0;border:1px solid #845574;background:#241829;padding:12px}
+#drink-list .item input:disabled{opacity:.55;cursor:not-allowed}
+#drinks .summary{border:1px solid #9c5386;background:linear-gradient(115deg,#4b2447,#27192c);border-radius:16px}
+#packages .vu-item-icon{width:76px;height:76px;padding:8px}
+#packages .item{min-height:100px}
+@media(min-width:900px){#drink-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
