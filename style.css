@@ -104,3 +104,27 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 .vu-recipe-ingredients li{display:flex;justify-content:space-between;gap:14px;align-items:center;border-top:1px solid rgba(255,255,255,.08);padding:9px 0;font-size:14px}
 .vu-recipe-ingredients li strong{white-space:nowrap;color:#ffc1e6}
 @media(max-width:550px){.vu-recipe-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.vu-recipe-visual{height:120px;padding:10px}.vu-recipe-body{padding:12px}.vu-recipe-body h3{font-size:16px}.vu-recipe-ingredients li{font-size:12px}}
+
+/* Two-section bar calculator */
+.vu-calc-panel{margin:20px 0;border:1px solid rgba(255,127,205,.28);border-radius:18px;background:rgba(31,16,35,.75);overflow:hidden}
+.vu-calc-panel>summary{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;cursor:pointer;padding:22px 24px;font-size:20px;font-weight:750;list-style:none}
+.vu-calc-panel>summary::-webkit-details-marker{display:none}
+.vu-calc-panel>summary:after{content:"⌄";margin-left:auto;color:#ff9ad8}
+.vu-calc-panel[open]>summary:after{content:"⌃"}
+.vu-calc-panel>summary small{font-size:13px;font-weight:400;color:#d5bfd1}
+.vu-calc-content{padding:8px 24px 24px;border-top:1px solid rgba(255,255,255,.08)}
+.vu-calc-toolbar{display:flex;gap:16px;align-items:end;justify-content:space-between;flex-wrap:wrap;margin:12px 0 22px}
+.vu-calc-toolbar label{flex:1;min-width:180px}
+.vu-order-category{border:1px solid rgba(255,255,255,.12);border-radius:12px;margin:12px 0;overflow:hidden}
+.vu-order-category>summary{cursor:pointer;padding:15px 18px;font-weight:700;background:rgba(255,105,190,.08)}
+.vu-order-items{padding:8px 16px}
+.vu-order-item{display:grid;grid-template-columns:minmax(125px,1fr) 110px 80px 100px;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.vu-order-item:last-child{border-bottom:0}
+.vu-order-item label{font-size:12px;color:#d6c4d4}
+.vu-order-item input{width:100%;margin-top:4px}
+.vu-order-line-total{text-align:right}
+.vu-order-total{display:flex;justify-content:space-between;gap:18px;padding:20px;margin:20px 0;border:1px solid rgba(255,127,205,.28);border-radius:14px;background:rgba(255,105,190,.08)}
+.vu-order-total small{display:block;color:#dbc0d5;margin-bottom:6px}.vu-order-total strong{font-size:23px}
+.vu-order-summary-line{padding:7px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.vu-order-item[hidden],.vu-order-category[hidden]{display:none!important}
+@media(max-width:650px){.vu-calc-panel>summary{padding:16px;font-size:17px}.vu-calc-content{padding:8px 12px 18px}.vu-order-item{grid-template-columns:minmax(90px,1fr) 90px 65px;gap:6px}.vu-order-line-total{grid-column:1/-1;text-align:right}.vu-order-total strong{font-size:18px}}
