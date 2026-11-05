@@ -80,7 +80,18 @@ function setupWasteCalculator(recipes){
   results.append(details);
   const needed={};let count=0;
   for(const r of recipes){const n=Math.max(0,Math.floor(Number(targets.get(r.name).value)||0));count+=n;for(const i of r.ingredients||[])needed[i.name]=(needed[i.name]||0)+n*Number(i.quantity||1);}
-  planResults.replaceChildren();if(count){planResults.append(el("h4",null,"For "+count+" planned cocktails"));const shortage=names.filter(n=>(needed[n]||0)>have(n)),left=names.filter(n=>have(n)>(needed[n]||0));planResults.append(el("p",null,shortage.length?"Buy: "+shortage.map(n=>n+" ×"+(needed[n]-have(n))).join(", "):"You have everything needed."));if(left.length)planResults.append(el("p","muted","Left over: "+left.map(n=>n+" ×"+(have(n)-(needed[n]||0))).join(", "));}
+  planResults.replaceChildren();
+  if(count){
+   planResults.append(el("h4",null,"For "+count+" planned cocktails"));
+   const shortage=names.filter(n=>(needed[n]||0)>have(n));
+   const left=names.filter(n=>have(n)>(needed[n]||0));
+   const buyText=shortage.length?"Buy: "+shortage.map(n=>n+" ×"+(needed[n]-have(n))).join(", "):"You have everything needed.";
+   planResults.append(el("p",null,buyText));
+   if(left.length){
+    const leftText="Left over: "+left.map(n=>n+" ×"+(have(n)-(needed[n]||0))).join(", ");
+    planResults.append(el("p","muted",leftText));
+   }
+  }
  }
  $id("waste-add").onclick=()=>{const qty=Number($id("waste-add-quantity").value);if(!Number.isInteger(qty)||qty<1)return;stock.set(pick.value,have(pick.value)+qty);$id("waste-add-quantity").value="1";render();};
  $id("waste-clear").onclick=()=>{stock.clear();render();};
