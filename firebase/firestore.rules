@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function owner() { return request.auth != null && request.auth.uid == 'MdjPO1WYwlb97hitjqUXLWHOXd12'; }
+  match /staffProfiles/{id} { allow read, write: if owner(); }
+  match /publicEvents/{id} {
+   allow read: if request.auth != null;
+   allow create, update, delete: if owner();
+  }
+  match /eventInterest/{id} {
+   allow read, update, delete: if owner();
+   allow create: if request.auth != null
+     && request.resource.data.keys().hasOnly(['eventId','name','contact','role','createdAt'])
+     && request.resource.data.keys().hasAll(['eventId','name','contact','role','createdAt'])
+     && request.resource.data.eventId is string
+     && request.resource.data.eventId.size() > 0
+     && request.resource.data.eventId.size() <= 128
+     && exists(/databases/$(database)/documents/publicEvents/$(request.resource.data.eventId))
+     && request.resource.data.name is string
+     && request.resource.data.name.size() >= 2
+     && request.resource.data.name.size() <= 60
+     && request.resource.data.contact is string
+     && request.resource.data.contact.size() >= 2
+     && request.resource.data.contact.size() <= 60
+     && request.resource.data.role in ['Dancer','DJ','Driver','Other']
+     && request.resource.data.createdAt == request.time;
+  }
+  match /{document=**} { allow read, write: if owner(); }
+ }
+}
