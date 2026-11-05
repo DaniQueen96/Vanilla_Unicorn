@@ -156,3 +156,28 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 .vu-potential-top span{font-size:11px;color:#ffb4df;white-space:nowrap}
 .vu-potential-card small{display:block;margin-top:6px;color:#d4c2d1;line-height:1.4}
 @media(max-width:750px){.vu-waste-layout{grid-template-columns:1fr}.vu-order-item{grid-template-columns:minmax(85px,1fr) 85px 60px}.vu-order-line-total{grid-column:1/-1}.vu-calc-panel>summary small{width:100%}}
+
+/* Compact pocket calculator: no full-page ingredient form */
+.vu-waste-compact{max-width:100%;padding-top:12px}
+.vu-waste-add{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin:12px 0}
+.vu-waste-add label{font-size:12px;flex:1;min-width:160px}
+.vu-waste-add label:nth-child(2){flex:0 0 95px;min-width:90px}
+.vu-waste-add input,.vu-waste-add select{width:100%;min-height:36px;margin-top:5px}
+.vu-waste-add button{min-height:36px}
+.vu-waste-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 8px}
+.vu-waste-toolbar button{width:auto;padding:7px 12px;font-size:12px}
+.vu-pocket-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.vu-pocket-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(255,145,213,.3);background:rgba(255,110,190,.07);border-radius:20px;padding:4px 5px 4px 11px;font-size:13px}
+.vu-pocket-chip button{width:24px;min-height:24px;padding:0;border-radius:50%;font-size:14px;line-height:1}
+.vu-waste-result-section{padding:12px 14px;border:1px solid rgba(255,255,255,.12);border-radius:12px}
+.vu-waste-result-section h3{font-size:16px;margin:0 0 8px}
+.vu-waste-result-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:13px}
+.vu-waste-result-row:last-child{border-bottom:0}
+.vu-waste-result-row span{text-align:right;color:#e8bfd9}
+.vu-waste-missing,.vu-waste-advanced{margin:10px 0;border:1px solid rgba(255,255,255,.13);border-radius:12px;padding:10px 14px}
+.vu-waste-missing>summary,.vu-waste-advanced>summary{cursor:pointer;font-weight:650;font-size:14px}
+.vu-waste-advanced>summary small{font-weight:400;color:#cbb4c6;margin-left:8px}
+.vu-target-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:8px;margin-top:12px}
+.vu-target-grid label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px}
+.vu-target-grid input{width:58px;padding:6px}
+@media(max-width:550px){.vu-waste-add label:first-child{min-width:100%}.vu-waste-add label:nth-child(2){flex:1}.vu-waste-result-row{align-items:start;flex-direction:column;gap:3px}.vu-waste-result-row span{text-align:left}}
