@@ -150,6 +150,21 @@ function setupEvents() {
       row.append(details,remove); list.append(row);
     }
   }, e => {list.textContent = "Unable to load events: " + e.message;});
+  const interestList = document.getElementById("event-interest-list");
+  const stopInterest = onSnapshot(collection(db,"eventInterest"), snap => {
+    interestList.replaceChildren();
+    const records = snap.docs.map(d => d.data());
+    if (!records.length) { interestList.textContent = "No expressions of interest yet."; return; }
+    for (const entry of records) {
+      const row = document.createElement("div"); row.className = "item";
+      const details = document.createElement("div");
+      const title = document.createElement("strong"); title.textContent = entry.name + " · " + entry.role;
+      const sub = document.createElement("div"); sub.className = "muted"; sub.textContent = "Discord: " + entry.contact + " · Event ID: " + entry.eventId;
+      details.append(title,sub); row.append(details); interestList.append(row);
+    }
+  },err => {interestList.textContent = "Could not load interest: " + err.message;});
+  const originalStop = stopEventsListener;
+  stopEventsListener = () => {originalStop();stopInterest();};
   if (form.dataset.bound) return;
   form.dataset.bound = "true";
   form.addEventListener("submit",async ev => {
