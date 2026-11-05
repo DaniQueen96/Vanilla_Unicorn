@@ -26,28 +26,37 @@
  settingsButtons.forEach(b=>b.addEventListener("click",()=>openSettings(b.dataset.settingsTab)));
  document.querySelectorAll("[data-open-tab]").forEach(b=>b.addEventListener("click",()=>openTab(b.dataset.openTab)));
  let last="overview";try{last=sessionStorage.getItem("vu-active-tab")||last}catch(_){}openTab(last);
- const form=document.getElementById("bar-transaction-form"), list=document.getElementById("bar-transactions-list");
- const key="vu-bar-transactions-local-v1";
+
+ const $bar=id=>document.getElementById("bar-"+id),form=$bar("transaction-form"),list=$bar("transactions-list"),key="vu-bar-transactions-local-v1";
  let records=[];try{records=JSON.parse(localStorage.getItem(key)||"[]");if(!Array.isArray(records))records=[]}catch(_){}
- const money=n=>"$"+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+ let editing=-1;
+ const money=n=>"$"+Number(n||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+ const total=r=>Number(r.amount||0)*Number(r.quantity||1);
+ function preview(){$bar("preview").textContent=money(Number($bar("quantity").value||0)*Number($bar("amount").value||0))}
+ ["quantity","amount"].forEach(id=>$bar(id).addEventListener("input",preview));
+ function reset(){editing=-1;form.reset();$bar("quantity").value="1";$bar("save").textContent="Save transaction";$bar("cancel").classList.add("hidden");preview();}
+ $bar("cancel").addEventListener("click",reset);
  function draw(){
   list.replaceChildren();
-  let sales=0,expenses=0;
-  records.forEach((r,i)=>{if(r.type==="sale")sales+=r.amount;else expenses+=r.amount;
-   const row=document.createElement("div");row.className="item";
-   const label=document.createElement("div");label.textContent=r.date+" · "+r.description+" · "+(r.type==="sale"?"Sale":"Expense")+" · "+money(r.amount);
-   const del=document.createElement("button");del.type="button";del.textContent="Remove";del.addEventListener("click",()=>{records.splice(i,1);save();});
-   row.append(label,del);list.append(row);
+  const sales=records.filter(r=>r.type==="sale").reduce((s,r)=>s+total(r),0),expenses=records.filter(r=>r.type==="expense").reduce((s,r)=>s+total(r),0);
+  $bar("sales").textContent=money(sales);$bar("expenses").textContent=money(expenses);$bar("net").textContent=money(sales-expenses);
+  const filter=$bar("filter").value,search=$bar("search").value.toLowerCase();
+  const shown=records.map((r,i)=>({...r,index:i})).filter(r=>(filter==="all"||r.type===filter)&&(r.description+" "+r.date).toLowerCase().includes(search));
+  if(!shown.length){const p=document.createElement("p");p.textContent="No matching transactions.";list.append(p);}
+  shown.forEach(r=>{
+   const row=document.createElement("div");row.className="item";const info=document.createElement("div");
+   const name=document.createElement("strong");name.textContent=r.description;const meta=document.createElement("div");meta.className="muted";meta.textContent=r.date+" · "+r.type+" · "+(r.quantity||1)+" × "+money(r.amount)+" = "+money(total(r));info.append(name,meta);
+   const actions=document.createElement("div");actions.style.display="flex";actions.style.gap="6px";
+   const edit=document.createElement("button");edit.type="button";edit.textContent="Edit";edit.onclick=()=>{editing=r.index;$bar("date").value=r.date;$bar("type").value=r.type;$bar("description").value=r.description;$bar("amount").value=r.amount;$bar("quantity").value=r.quantity||1;$bar("save").textContent="Save changes";$bar("cancel").classList.remove("hidden");preview();form.scrollIntoView({behavior:"smooth"});};
+   const del=document.createElement("button");del.type="button";del.textContent="Delete";del.onclick=()=>{if(!confirm("Delete this transaction?"))return;records.splice(r.index,1);save();};
+   actions.append(edit,del);row.append(info,actions);list.append(row);
   });
-  document.getElementById("bar-sales").textContent=money(sales);
-  document.getElementById("bar-expenses").textContent=money(expenses);
-  document.getElementById("bar-net").textContent=money(sales-expenses);
-  if(!records.length){const p=document.createElement("p");p.textContent="No transactions recorded on this device.";list.append(p);}
  }
- function save(){try{localStorage.setItem(key,JSON.stringify(records))}catch(e){alert("Unable to save transactions on this device.");}draw();}
- form.addEventListener("submit",e=>{e.preventDefault();const amount=Number(document.getElementById("bar-amount").value);
- if(!Number.isFinite(amount)||amount<=0)return;
- records.unshift({date:document.getElementById("bar-date").value,type:document.getElementById("bar-type").value,description:document.getElementById("bar-description").value.trim(),amount});
- save();form.reset();});
- draw();
+ function save(){try{localStorage.setItem(key,JSON.stringify(records))}catch(e){alert("Unable to save on this device.");}draw();}
+ form.addEventListener("submit",e=>{e.preventDefault();const amount=Number($bar("amount").value),quantity=Number($bar("quantity").value),description=$bar("description").value.trim();if(!description||!Number.isFinite(amount)||amount<=0||!Number.isInteger(quantity)||quantity<1)return;
+ const record={date:$bar("date").value,type:$bar("type").value,description,amount,quantity};
+ if(editing>=0)records[editing]=record;else records.unshift(record);save();reset();});
+ ["filter","search"].forEach(id=>$bar(id).addEventListener("input",draw));
+ $bar("export").addEventListener("click",()=>{const fields=["date","type","description","quantity","amount"];const csv=[fields.join(","),...records.map(r=>fields.map(k=>'"'+String(r[k]??"").replace(/"/g,'""')+'"').join(","))].join("\r\n");const blob=new Blob([csv],{type:"text/csv"}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download="vanilla-unicorn-bar.csv";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+ draw();preview();
 })();
