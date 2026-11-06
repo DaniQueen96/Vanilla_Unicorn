@@ -250,3 +250,16 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 @media(max-width:600px){.vu-calendar-day{min-height:54px;padding:5px!important}.vu-calendar-day small{font-size:.58rem}.vu-calendar-toolbar button{font-size:.75rem}}
 
 .vu-package-price-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:.85rem}.vu-package-price-row input{width:105px;max-width:45%;padding:8px}
+
+.vu-tab-create{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:20px 0}
+.vu-tab-create label{flex:1;min-width:200px}.vu-tab-create button{width:auto}
+.vu-tab-layout{display:grid;grid-template-columns:minmax(180px,260px) minmax(0,1fr);gap:18px}
+.vu-tab-list{display:grid;gap:8px}.vu-tab-list button{text-align:left;width:100%;overflow-wrap:anywhere}
+.vu-tab-list button.active{border-color:#ff78bc;background:#62304f}
+.vu-tab-detail{border:1px solid #50304b;border-radius:14px;padding:18px;min-width:0}
+.vu-tab-lines{display:grid;gap:8px;margin:12px 0}
+.vu-tab-line{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-bottom:1px solid #493048;padding:8px 0}
+.vu-tab-line span{flex:1}.vu-tab-line button{width:auto}
+.vu-tab-add{display:grid;grid-template-columns:minmax(130px,1fr) 80px 105px auto;gap:8px;margin:18px 0}
+.vu-tab-add input,.vu-tab-add select{min-width:0}.vu-tab-add button{width:auto}
+@media(max-width:760px){.vu-tab-layout{grid-template-columns:1fr}.vu-tab-add{grid-template-columns:1fr 1fr}.vu-tab-add select{grid-column:1/-1}}

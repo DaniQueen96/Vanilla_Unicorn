@@ -30,7 +30,7 @@ function renderPackageCreator(){
  $("package-price-note").textContent="Estimated drink prices use a 30% margin on listed store costs. Change any price directly here for this package quote. Final shared menu prices remain managed in Settings.";
  update();
 }
-document.addEventListener("vu:prices-updated",event=>{sharedSellingPrices=event.detail||{};if(data.drinks.length)renderPackageCreator();});
+document.addEventListener("vu:prices-updated",event=>{sharedSellingPrices=event.detail||{};if(data.drinks.length){renderPackageCreator();document.dispatchEvent(new Event("vu:tab-catalog-updated"));}});
 function setupMonthCalendar(){
  const grid=$("vu-calendar-grid"),title=$("vu-calendar-title"),selected=$("vu-calendar-selected");
  if(!grid)return;
@@ -76,7 +76,7 @@ function render(){for(let x of data.drinks){line($("drink-list"),x.name,x.price,
 
 // Main navigation and nested settings sections.
 (function(){
- const primary=["overview","recipes","transactions","packages","tips","calendar","settings"];
+ const primary=["overview","recipes","transactions","packages","customer-tabs","tips","calendar","settings"];
  const nested=["staff","costing","pricing","drinks","limo","events","incidents"];
  const settingsContent=document.getElementById("settings-content");
  nested.forEach(id=>{const node=document.getElementById(id);if(node){node.classList.add("settings-panel");settingsContent.append(node);}});
@@ -356,3 +356,73 @@ function setupOrderCalculator(data){
  document.addEventListener("vu:costing-updated",event=>{if(event.detail?.recipes?.length){costing=event.detail;costsLoaded=true;seedSuggested();}else calculate();});
  setActive(active,false);setActive(pricingActive,true);calculate();document.dispatchEvent(new Event("vu:pricing-ready"));
 }
+
+(function customerTabs(){
+ const create=$("vu-tab-create"),list=$("vu-tab-list"),detail=$("vu-tab-detail"),status=$("vu-tab-status");
+ if(!create)return;
+ let tabs=[],selected=null,costing=null;
+ const say=s=>status.textContent=s;
+ const send=(action,payload)=>document.dispatchEvent(new CustomEvent("vu:tab-command",{detail:{action,...payload}}));
+ const key=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
+ const recipeCost=r=>{
+  if(!costing?.prices)return null;
+  let sum=0;
+  for(const i of r.ingredients||[]){const n=costing.prices[i.name];if(n===undefined)return null;sum+=Number(n)*Number(i.qty??i.quantity??1);}
+  return sum/Math.max(1,Number(r.yieldCount)||1);
+ };
+ const catalog=()=>{
+  const drinks=data.drinks.map(d=>{const p=packagePrice(d);return {id:"drink:"+d.id,name:d.name,price:p.price};});
+  const cocktails=(costing?.recipes?.length?costing.recipes:data.recipes).map(r=>{
+   const matching=Object.entries(sharedSellingPrices).find(([k,v])=>k.startsWith("Cocktails::")&&k.toLowerCase().includes(key(r.name))&&v!==null);
+   const cost=recipeCost(r),margin=Number(sharedSellingPrices.__defaultMargin??30);
+   const price=matching?Number(matching[1]):cost===null?null:Math.ceil(cost/(1-margin/100)/5)*5;
+   return {id:"cocktail:"+key(r.name),name:r.name,price};
+  });
+  const services=data.services.map(d=>({id:"service:"+d.id,name:d.name,price:packagePrice(d).price}));
+  return [...cocktails,...drinks,...services];
+ };
+ const button=(text,handler)=>{const b=el("button",null,text);b.type="button";b.onclick=handler;return b;};
+ function draw(){
+  list.replaceChildren();
+  const ordered=[...tabs].sort((x,y)=>(x.status==="paid")-(y.status==="paid")||String(y.updatedAt||"").localeCompare(String(x.updatedAt||"")));
+  for(const t of ordered){
+   const total=(t.items||[]).reduce((s,i)=>s+Number(i.price)*Number(i.quantity),0);
+   const b=button(t.name+" · "+cash(total)+(t.status==="paid"?" · Paid":""),()=>{selected=t.id;draw();});
+   if(t.id===selected)b.classList.add("active");
+   list.append(b);
+  }
+  const tab=tabs.find(t=>t.id===selected);
+  detail.replaceChildren();
+  if(!tab){detail.append(el("p","muted","Select or create a customer tab."));return;}
+  detail.append(el("h3",null,tab.name),el("p","muted",tab.status==="paid"?"Paid · read-only":"Open · running bill"));
+  const lines=el("div","vu-tab-lines");
+  for(const item of tab.items||[]){
+   const row=el("div","vu-tab-line");
+   row.append(el("span",null,item.name+" × "+item.quantity+" @ "+cash(item.price)),el("strong",null,cash(item.quantity*item.price)));
+   if(tab.status!=="paid")row.append(button("Remove",()=>send("remove",{id:tab.id,lineId:item.lineId})));
+   lines.append(row);
+  }
+  if(!tab.items?.length)lines.append(el("p","muted","No items on this tab yet."));
+  detail.append(lines);
+  const total=(tab.items||[]).reduce((s,i)=>s+Number(i.price)*Number(i.quantity),0);
+  const summary=el("div","summary");summary.append(el("span",null,"Total due"),el("strong",null,cash(total)));detail.append(summary);
+  if(tab.status==="paid")return;
+  const form=el("form","vu-tab-add"),select=el("select"),count=el("input"),custom=el("input"),add=el("button",null,"Add to tab");
+  count.type="number";count.min="1";count.step="1";count.value="1";count.setAttribute("aria-label","Quantity");
+  custom.type="number";custom.min="0";custom.step="0.01";custom.placeholder="Price";custom.setAttribute("aria-label","Unit price");
+  const options=catalog();
+  for(const o of options){const option=new Option(o.name+(o.price===null?" · price needed":" · "+cash(o.price)),o.id);select.append(option);}
+  const setPrice=()=>{const item=options.find(x=>x.id===select.value);custom.value=item&&validPrice(item.price)?String(item.price):"";};
+  select.onchange=setPrice;setPrice();
+  form.append(select,count,custom,add);
+  form.onsubmit=e=>{e.preventDefault();const item=options.find(x=>x.id===select.value),n=Number(count.value),p=Number(custom.value);if(!item||!Number.isInteger(n)||n<1||custom.value===""||!Number.isFinite(p)||p<0){say("Choose an item, valid quantity and price.");return;}send("add",{id:tab.id,item:{name:item.name,quantity:n,price:p}});};
+  detail.append(form,button("Mark paid & close tab",()=>{if(confirm("Mark "+tab.name+"'s bill as paid for "+cash(total)+"?"))send("settle",{id:tab.id});}));
+ }
+ create.onsubmit=e=>{e.preventDefault();const name=$("vu-tab-name").value.trim();if(!name)return;send("create",{name});$("vu-tab-name").value="";};
+ document.addEventListener("vu:tabs-updated",e=>{tabs=Array.isArray(e.detail)?e.detail:[];if(!tabs.some(t=>t.id===selected))selected=tabs.find(t=>t.status!=="paid")?.id||tabs[0]?.id||null;draw();});
+ document.addEventListener("vu:tab-error",e=>say(e.detail||"Unable to save tab."));
+ document.addEventListener("vu:tab-success",e=>say(e.detail||"Saved."));
+ document.addEventListener("vu:costing-updated",e=>{if(e.detail?.recipes)costing=e.detail;});
+ document.addEventListener("vu:tab-catalog-updated",draw);
+ document.dispatchEvent(new Event("vu:tab-ready"));
+})();

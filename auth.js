@@ -29,6 +29,8 @@ const logout = document.getElementById("logout-button");
 const status = document.getElementById("login-message");
 let appLoaded = false;
 let stopPricingListener = null;
+let stopTabsListener=null;
+let tabCache=[];
 let stopPricingCostingListener = null;
 let currentCosting = null;
 let sharedPrices = {};
@@ -77,6 +79,35 @@ document.addEventListener("vu:save-price",async event=>{
  }catch(error){if(status)status.textContent="Save failed: "+error.message;}
 });
 
+const tabCollection=collection(db,"customerTabs");
+function beginTabSync(){
+ if(stopTabsListener)return;
+ stopTabsListener=onSnapshot(tabCollection,snapshot=>{
+  tabCache=snapshot.docs.map(d=>({id:d.id,...d.data()}));
+  document.dispatchEvent(new CustomEvent("vu:tabs-updated",{detail:tabCache}));
+ },error=>document.dispatchEvent(new CustomEvent("vu:tab-error",{detail:"Unable to load customer tabs: "+error.message})));
+}
+document.addEventListener("vu:tab-ready",()=>document.dispatchEvent(new CustomEvent("vu:tabs-updated",{detail:tabCache})));
+document.addEventListener("vu:tab-command",async e=>{
+ if(auth.currentUser?.uid!==OWNER_UID)return;
+ const {action,id,name,item,lineId}=e.detail||{};
+ try{
+  if(action==="create"){
+   if(typeof name!=="string"||!name.trim()||name.length>80)return;
+   await addDoc(tabCollection,{name:name.trim(),status:"open",items:[],updatedAt:new Date().toISOString(),createdAt:new Date().toISOString()});
+  }else{
+   const current=tabCache.find(t=>t.id===id);if(!current||current.status==="paid")return;
+   let items=Array.isArray(current.items)?[...current.items]:[];
+   if(action==="add"){
+    if(!item||typeof item.name!=="string"||!Number.isInteger(item.quantity)||item.quantity<1||!Number.isFinite(item.price)||item.price<0)return;
+    items.push({lineId:Date.now().toString(36)+Math.random().toString(36).slice(2,8),name:item.name.slice(0,100),quantity:item.quantity,price:item.price});
+   }else if(action==="remove"){items=items.filter(i=>i.lineId!==lineId);}
+   else if(action!=="settle")return;
+   await setDoc(doc(db,"customerTabs",id),{items,status:action==="settle"?"paid":"open",updatedAt:new Date().toISOString(),...(action==="settle"?{paidAt:new Date().toISOString()}: {})},{merge:true});
+  }
+  document.dispatchEvent(new CustomEvent("vu:tab-success",{detail:"Customer tab saved."}));
+ }catch(error){document.dispatchEvent(new CustomEvent("vu:tab-error",{detail:"Tab save failed: "+error.message}));}
+});
 document.getElementById("login-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const username = document.getElementById("login-username").value.trim().toLowerCase();
@@ -105,7 +136,8 @@ onAuthStateChanged(auth, (user) => {
   app.classList.toggle("hidden", !owner);
   logout.classList.toggle("hidden", !owner);
   document.getElementById("signed-in-label").textContent = owner ? "VU Owner" : "Drinks · Events · Bookings";
-  if (owner) beginPricingSync();
+  if (owner) { beginPricingSync(); beginTabSync(); }
+  if (!owner && stopTabsListener) {stopTabsListener();stopTabsListener=null;tabCache=[];}
   if (!owner && stopPricingListener) { stopPricingListener(); stopPricingListener=null; sharedPrices={}; }
   if (!owner && stopPricingCostingListener) { stopPricingCostingListener(); stopPricingCostingListener=null; currentCosting=null; }
   if (owner && !costingInitialized) { costingInitialized = true; setupCosting(); }
@@ -125,7 +157,7 @@ onAuthStateChanged(auth, (user) => {
   if (owner && !appLoaded) {
     appLoaded = true;
     const script = document.createElement("script");
-    script.src = "app.js?v=20261106-package-calendar2";
+    script.src = "app.js?v=20261106-customer-tabs1";
     document.body.append(script);
   }
   if (user && !owner) signOut(auth);
