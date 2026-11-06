@@ -175,7 +175,7 @@ onAuthStateChanged(auth, (user) => {
   if (owner && !appLoaded) {
     appLoaded = true;
     const script = document.createElement("script");
-    script.src = "app.js?v=20261106-customer-profiles1";
+    script.src = "app.js?v=20261106-unified-till4";
     document.body.append(script);
   }
   if (user && !owner) signOut(auth);

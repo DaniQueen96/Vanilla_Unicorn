@@ -294,3 +294,6 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 @media(max-width:1050px){.vu-till-columns{grid-template-columns:1fr}.vu-till-basket{position:static}}
 
 .vu-customer-search{display:block;margin:12px 0}.vu-customer-search input{width:100%}.vu-customer-list{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.vu-customer-list button,.vu-customer-profile button{width:auto}.vu-customer-list button.active{background:#8c356a}.vu-customer-profile{border:1px solid #63334e;border-radius:12px;padding:14px;margin:12px 0}.vu-customer-profile button{margin:5px}.vu-customer-profile h4{margin:0 0 8px}
+
+/* One ordering workflow: customer records are history only, never a second item-entry form. */
+.vu-till-basket .vu-order-to-tab button[hidden],.vu-till-basket .vu-checkout-actions button[hidden]{display:none!important}.vu-till-basket .vu-till-hint{font-size:.85rem;line-height:1.5}.vu-history-layout{margin-top:12px}.vu-history-layout .vu-tab-detail{min-height:100px}.vu-customer-profile{margin-bottom:12px}

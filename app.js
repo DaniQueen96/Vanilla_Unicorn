@@ -421,7 +421,7 @@ function setupOrderCalculator(data){
     profile.append(el("h4",null,c.name));
     const history=tabs.filter(t=>t.customerId===c.id).sort((x,y)=>String(y.createdAt||"").localeCompare(String(x.createdAt||"")));
     const open=history.find(t=>t.status!=="paid");
-    if(open)profile.append(button("Open current bill",()=>{selected=open.id;draw();}));
+    if(open)profile.append(button("Use this bill in till",()=>{selected=open.id;const picker=$("vu-order-tab-target");if(picker){picker.value=open.id;picker.dispatchEvent(new Event("change"));}document.querySelector(".vu-till-basket")?.scrollIntoView({behavior:"smooth",block:"center"});draw();}));
     else profile.append(button("+ Start new bill",()=>send("newBill",{customerId:c.id})));
     profile.append(el("p","muted",history.length+" bill(s) · "+history.filter(t=>t.status==="paid").length+" paid"));
     for(const t of history){
@@ -454,16 +454,7 @@ function setupOrderCalculator(data){
   const total=(tab.items||[]).reduce((s,i)=>s+Number(i.price)*Number(i.quantity),0);
   const summary=el("div","summary");summary.append(el("span",null,"Total due"),el("strong",null,cash(total)));detail.append(summary);
   if(tab.status==="paid")return;
-  const form=el("form","vu-tab-add"),select=el("select"),count=el("input"),custom=el("input"),add=el("button",null,"Add to tab");
-  count.type="number";count.min="1";count.step="1";count.value="1";count.setAttribute("aria-label","Quantity");
-  custom.type="number";custom.min="0";custom.step="0.01";custom.placeholder="Price";custom.setAttribute("aria-label","Unit price");
-  const options=catalog();
-  for(const o of options){const option=new Option(o.name+(o.price===null?" · price needed":" · "+cash(o.price)),o.id);select.append(option);}
-  const setPrice=()=>{const item=options.find(x=>x.id===select.value);custom.value=item&&validPrice(item.price)?String(item.price):"";};
-  select.onchange=setPrice;setPrice();
-  form.append(select,count,custom,add);
-  form.onsubmit=e=>{e.preventDefault();const item=options.find(x=>x.id===select.value),n=Number(count.value),p=Number(custom.value);if(!item||!Number.isInteger(n)||n<1||custom.value===""||!Number.isFinite(p)||p<0){say("Choose an item, valid quantity and price.");return;}send("add",{id:tab.id,item:{name:item.name,quantity:n,price:p}});};
-  detail.append(form,button("Mark paid & close tab",()=>{if(confirm("Mark "+tab.name+"'s bill as paid for "+cash(total)+"?"))send("settle",{id:tab.id});}));
+  detail.append(el("p","muted","Add more items using the Bar Till above. Select this customer in the till dropdown."));
  }
  create.onsubmit=e=>{e.preventDefault();const name=$("vu-tab-name").value.trim();if(!name)return;send("createCustomer",{name});$("vu-tab-name").value="";create.hidden=true;};
  $("vu-customer-search")?.addEventListener("input",draw);
@@ -473,17 +464,34 @@ function setupOrderCalculator(data){
   if(selected&&!tabs.some(t=>t.id===selected))selected=null;
   const picker=$("vu-package-tab-target");
   if(picker){const current=picker.value;picker.replaceChildren(new Option("Select open customer tab",""));for(const t of tabs.filter(t=>t.status!=="paid"))picker.append(new Option(customers.find(c=>c.id===t.customerId)?.name||t.name,t.id));picker.value=tabs.some(t=>t.id===current&&t.status!=="paid")?current:"";}
-  const orderPicker=$("vu-order-tab-target");if(orderPicker){const previous=orderPicker.value;orderPicker.replaceChildren(new Option("Select customer",""));for(const t of tabs.filter(t=>t.status!=="paid"))orderPicker.append(new Option(customers.find(c=>c.id===t.customerId)?.name||t.name,t.id));orderPicker.value=tabs.some(t=>t.id===previous&&t.status!=="paid")?previous:"";}
+  const orderPicker=$("vu-order-tab-target");if(orderPicker){const previous=orderPicker.value;orderPicker.replaceChildren(new Option("Walk-in / quick order",""));for(const t of tabs.filter(t=>t.status!=="paid"))orderPicker.append(new Option(customers.find(c=>c.id===t.customerId)?.name||t.name,t.id));orderPicker.value=tabs.some(t=>t.id===previous&&t.status!=="paid")?previous:"";}
   draw();
+  if(selectedCustomer){const open=tabs.find(t=>t.customerId===selectedCustomer&&t.status!=="paid");if(open&&!orderPicker?.value){orderPicker.value=open.id;orderPicker.dispatchEvent(new Event("change"));}}
  });
  document.addEventListener("vu:tab-error",e=>say(e.detail||"Unable to save tab."));
  document.addEventListener("vu:tab-success",e=>say(e.detail||"Saved."));
  document.addEventListener("vu:costing-updated",e=>{if(e.detail?.recipes)costing=e.detail;});
  document.addEventListener("vu:tab-catalog-updated",draw);
+ const tillPicker=$("vu-order-tab-target"),tillPaid=$("vu-order-paid"),tillSettle=$("vu-till-settle"),tillHint=$("vu-till-hint");
+ const syncTill=()=>{
+  const id=tillPicker?.value||"",tab=tabs.find(t=>t.id===id&&t.status!=="paid");
+  if(tillPaid)tillPaid.hidden=Boolean(tab);
+  if(tillSettle)tillSettle.hidden=!tab;
+  if(orderSend)orderSend.hidden=!tab;
+  if(tillHint)tillHint.textContent=tab?"Adding items to "+(customers.find(c=>c.id===tab.customerId)?.name||tab.name)+"'s bill. Save items first; Paid closes the full bill.":"Walk-in order: add items and mark paid. For a running tab, select an existing open customer bill.";
+ };
+ tillPicker?.addEventListener("change",syncTill);
+ tillSettle?.addEventListener("click",()=>{
+  const tab=tabs.find(t=>t.id===tillPicker?.value&&t.status!=="paid");
+  if(!tab)return;
+  const total=(tab.items||[]).reduce((s,i)=>s+Number(i.price)*Number(i.quantity),0);
+  if(confirm("Confirm "+tab.name+"'s complete bill of "+cash(total)+" was paid in city?"))send("settle",{id:tab.id});
+ });
+ document.addEventListener("vu:tabs-updated",()=>setTimeout(syncTill,0));
  const orderSend=$("vu-order-add-tab");
  if(orderSend)orderSend.onclick=()=>{
   const id=$("vu-order-tab-target").value,message=$("vu-order-tab-message");
-  if(!id){message.textContent="Choose an open customer tab first.";return;}
+  if(!id){message.textContent="Select an open customer bill first.";return;}
   document.dispatchEvent(new CustomEvent("vu:order-request-items",{detail:{callback:items=>{
    if(!items.length){message.textContent="Add priced items to the order first.";return;}
    send("addMany",{id,items});message.textContent="Adding "+items.length+" order lines to tab…";document.dispatchEvent(new Event("vu:clear-order"));
