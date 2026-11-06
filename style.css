@@ -269,3 +269,11 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 .vu-waste-quick-button{width:auto!important;padding:7px 11px!important;font-size:.85rem}
 .vu-package-send{display:flex;align-items:end;flex-wrap:wrap;gap:12px;margin:18px 0}
 .vu-package-send label{flex:1;min-width:200px}.vu-package-send button{width:auto}
+
+.vu-package-planner{border:1px solid #673657;border-radius:16px;padding:18px;margin:18px 0 24px;background:rgba(255,100,180,.035)}
+.vu-plan-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:12px 0}
+.vu-plan-fields label{display:grid;gap:7px}.vu-plan-fields input{min-width:0;width:100%}
+.vu-package-breakdown{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}
+.vu-package-breakdown>div{padding:12px;border:1px solid #53304c;border-radius:10px;display:flex;justify-content:space-between;gap:8px}
+.vu-recipe-price{font-weight:700;color:#ff88c6;margin:8px 0 12px}
+@media(max-width:650px){.vu-package-breakdown{grid-template-columns:1fr}}
