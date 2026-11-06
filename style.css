@@ -248,3 +248,5 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 .vu-calendar-day.selected{background:#653052!important}
 .vu-calendar-blank{min-height:40px}
 @media(max-width:600px){.vu-calendar-day{min-height:54px;padding:5px!important}.vu-calendar-day small{font-size:.58rem}.vu-calendar-toolbar button{font-size:.75rem}}
+
+.vu-package-price-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:.85rem}.vu-package-price-row input{width:105px;max-width:45%;padding:8px}

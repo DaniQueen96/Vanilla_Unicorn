@@ -16,13 +16,18 @@ function renderPackageCreator(){
   image.alt="";image.loading="lazy";image.src="https://p17.admin.opfw.me/images/icons/items/"+encodeURIComponent(item.id.replace(/-/g,"_"))+".png";image.onerror=()=>{image.onerror=null;image.src="assets/vu-unicorn.svg"};
   const info=el("div","vu-package-info");info.append(el("strong",null,item.name),el("small","muted",validPrice(entry.price)?cash(entry.price)+(pricing.estimated?" · estimated":""):"Set price in Settings"));
   top.append(image,info);
+  const priceRow=el("label","vu-package-price-row","Price per item ($)");
+  const priceInput=el("input");priceInput.type="number";priceInput.min="0";priceInput.step="0.01";priceInput.placeholder="Enter price";priceInput.value=validPrice(entry.price)?String(entry.price):"";
+  priceInput.setAttribute("aria-label",item.name+" price per item");
+  priceInput.addEventListener("input",()=>{const n=Number(priceInput.value);entry.price=priceInput.value!==""&&Number.isFinite(n)&&n>=0?n:null;slider.disabled=!validPrice(entry.price);minus.disabled=plus.disabled=slider.disabled;if(!validPrice(entry.price)){entry.quantity=0;slider.value="0";count.textContent="0";}update();});
+  priceRow.append(priceInput);
   const control=el("div","vu-package-control"),minus=el("button",null,"−"),plus=el("button",null,"+"),slider=el("input"),count=el("strong",null,"0");
   minus.type=plus.type="button";slider.type="range";slider.min="0";slider.max="30";slider.step="1";slider.value="0";slider.disabled=!validPrice(entry.price);minus.disabled=plus.disabled=slider.disabled;
   const setQuantity=n=>{entry.quantity=Math.max(0,Math.min(30,n));slider.value=String(entry.quantity);count.textContent=String(entry.quantity);update();};
   minus.onclick=()=>setQuantity(entry.quantity-1);plus.onclick=()=>setQuantity(entry.quantity+1);slider.oninput=()=>setQuantity(Number(slider.value));
-  control.append(minus,slider,count,plus);card.append(top,control);root.append(card);
+  control.append(minus,slider,count,plus);card.append(top,priceRow,control);root.append(card);
  }
- $("package-price-note").textContent="Estimated prices use a 30% margin on listed store costs. Services without a configured price cannot be added. Configure final prices in Settings → Pricing Management.";
+ $("package-price-note").textContent="Estimated drink prices use a 30% margin on listed store costs. Change any price directly here for this package quote. Final shared menu prices remain managed in Settings.";
  update();
 }
 document.addEventListener("vu:prices-updated",event=>{sharedSellingPrices=event.detail||{};if(data.drinks.length)renderPackageCreator();});
