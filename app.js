@@ -77,7 +77,7 @@ function render(){for(let x of data.drinks){line($("drink-list"),x.name,x.price,
 
 // Main navigation and nested settings sections.
 (function(){
- const primary=["overview","recipes","transactions","packages","customer-tabs","tips","calendar","settings"];
+ const primary=["overview","recipes","transactions","packages","tips","calendar","settings"];
  const nested=["staff","costing","pricing","drinks","limo","events","incidents"];
  const settingsContent=document.getElementById("settings-content");
  nested.forEach(id=>{const node=document.getElementById(id);if(node){node.classList.add("settings-panel");settingsContent.append(node);}});
@@ -229,6 +229,7 @@ function setupOrderCalculator(data){
   if(Object.keys(updates).length)document.dispatchEvent(new CustomEvent("vu:seed-prices",{detail:updates}));
   calculate();
  };
+ document.addEventListener("vu:order-request-items",event=>{const callback=event.detail?.callback;if(typeof callback!=="function")return;callback(entries.filter(e=>e.qty>0&&e.price.value!==""&&Number.isFinite(Number(e.price.value))).map(e=>({name:e.item.name,quantity:e.qty,price:Number(e.price.value)})));});
  const entries=[];let active=groups[0][0],pricingActive=groups[0][0];
  const setActive=(group,isPricing)=>{
   if(isPricing)pricingActive=group;else active=group;
@@ -363,6 +364,8 @@ function setupOrderCalculator(data){
 
 (function customerTabs(){
  const create=$("vu-tab-create"),list=$("vu-tab-list"),detail=$("vu-tab-detail"),status=$("vu-tab-status");
+ const quick=$("vu-mode-quick"),customer=$("vu-mode-customer"),area=$("customer-tabs"),panel=$("vu-quick-order-panel");
+ if(quick&&customer&&area&&panel){const mode=which=>{area.hidden=which!=="customer";panel.hidden=which==="customer";quick.classList.toggle("active",which==="quick");customer.classList.toggle("active",which==="customer");if(which==="quick")panel.open=true;};quick.onclick=()=>mode("quick");customer.onclick=()=>mode("customer");mode("quick");}
  if(!create)return;
  let tabs=[],selected=null,costing=null;
  const say=s=>status.textContent=s;
@@ -428,12 +431,22 @@ function setupOrderCalculator(data){
   if(!tabs.some(t=>t.id===selected))selected=tabs.find(t=>t.status!=="paid")?.id||tabs[0]?.id||null;
   const picker=$("vu-package-tab-target");
   if(picker){const current=picker.value;picker.replaceChildren(new Option("Select open customer tab",""));for(const t of tabs.filter(t=>t.status!=="paid"))picker.append(new Option(t.name,t.id));picker.value=tabs.some(t=>t.id===current&&t.status!=="paid")?current:"";}
+  const orderPicker=$("vu-order-tab-target");if(orderPicker){const previous=orderPicker.value;orderPicker.replaceChildren(new Option("Select customer",""));for(const t of tabs.filter(t=>t.status!=="paid"))orderPicker.append(new Option(t.name,t.id));orderPicker.value=tabs.some(t=>t.id===previous&&t.status!=="paid")?previous:"";}
   draw();
  });
  document.addEventListener("vu:tab-error",e=>say(e.detail||"Unable to save tab."));
  document.addEventListener("vu:tab-success",e=>say(e.detail||"Saved."));
  document.addEventListener("vu:costing-updated",e=>{if(e.detail?.recipes)costing=e.detail;});
  document.addEventListener("vu:tab-catalog-updated",draw);
+ const orderSend=$("vu-order-add-tab");
+ if(orderSend)orderSend.onclick=()=>{
+  const id=$("vu-order-tab-target").value,message=$("vu-order-tab-message");
+  if(!id){message.textContent="Choose an open customer tab first.";return;}
+  document.dispatchEvent(new CustomEvent("vu:order-request-items",{detail:{callback:items=>{
+   if(!items.length){message.textContent="Add priced items to the order first.";return;}
+   send("addMany",{id,items});message.textContent="Saving "+items.length+" order lines…";
+  }}}));
+ };
  const packageSend=$("vu-package-add-to-tab");
  if(packageSend)packageSend.onclick=()=>{
   const id=$("vu-package-tab-target").value,items=packageEntries.filter(x=>x.quantity>0&&validPrice(x.price));

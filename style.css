@@ -277,3 +277,5 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 .vu-package-breakdown>div{padding:12px;border:1px solid #53304c;border-radius:10px;display:flex;justify-content:space-between;gap:8px}
 .vu-recipe-price{font-weight:700;color:#ff88c6;margin:8px 0 12px}
 @media(max-width:650px){.vu-package-breakdown{grid-template-columns:1fr}}
+
+.vu-order-mode{display:flex;gap:10px;margin:16px 0 20px}.vu-order-mode button{width:auto}.vu-order-mode button.active{background:#743456;border-color:#f28cc4}.vu-order-customer-area{padding:12px 0 20px}.vu-order-customer-area[hidden],#vu-quick-order-panel[hidden]{display:none!important}.vu-order-to-tab{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:18px 0}.vu-order-to-tab label{min-width:220px;flex:1}.vu-order-to-tab button{width:auto}.vu-order-to-tab p{width:100%}
