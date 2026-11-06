@@ -14,7 +14,7 @@ function renderPackageCreator(){
   const pricing=packagePrice(item),entry={...item,price:pricing.price,quantity:0};packageEntries.push(entry);
   const card=el("article","vu-package-card"),top=el("div","vu-package-card-top"),image=el("img","vu-item-icon");
   image.alt="";image.loading="lazy";image.src="https://p17.admin.opfw.me/images/icons/items/"+encodeURIComponent(item.id.replace(/-/g,"_"))+".png";image.onerror=()=>{image.onerror=null;image.src="assets/vu-unicorn.svg"};
-  const info=el("div","vu-package-info");info.append(el("strong",null,item.name),el("small","muted",validPrice(entry.price)?cash(entry.price)+(pricing.estimated?" · estimated":""):"Set price in Settings"));
+  const info=el("div","vu-package-info");info.append(el("strong",null,item.name));
   top.append(image,info);
   const priceRow=el("label","vu-package-price-row","Price per item ($)");
   const priceInput=el("input");priceInput.type="number";priceInput.min="0";priceInput.step="0.01";priceInput.placeholder="Enter price";priceInput.value=validPrice(entry.price)?String(entry.price):"";
@@ -27,7 +27,7 @@ function renderPackageCreator(){
   minus.onclick=()=>setQuantity(entry.quantity-1);plus.onclick=()=>setQuantity(entry.quantity+1);slider.oninput=()=>setQuantity(Number(slider.value));
   control.append(minus,slider,count,plus);card.append(top,priceRow,control);root.append(card);
  }
- for(const id of ["vu-plan-guests","vu-plan-budget","vu-plan-discount"])$(id)?.addEventListener("input",update);
+
  $("package-price-note").textContent="Estimated drink prices use a 30% margin on listed store costs. Change any price directly here for this package quote. Final shared menu prices remain managed in Settings.";
  update();
 }
@@ -456,4 +456,5 @@ function setupOrderCalculator(data){
  };
  document.addEventListener("vu:prices-updated",refresh);
  document.addEventListener("vu:pricing-ready",()=>setTimeout(refresh,0));
+ setTimeout(refresh,800);
 })();
