@@ -12,12 +12,13 @@ let packageImages={};
 function pkgImageKey(item){return item.kind+":"+item.id}
 function pkgImageFor(item){return packageImages[pkgImageKey(item)]||""}
 function pkgApplyImage(img,item){
- const custom=pkgImageFor(item);img.src=custom||"assets/vu-unicorn.svg";img.classList.toggle("vu-pkg-photo-placeholder",!custom);
+ const custom=pkgImageFor(item),id=String(item.id||item.name).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
+ const existing="https://p17.admin.opfw.me/images/icons/items/"+encodeURIComponent(id)+".png";img.src=custom||existing;img.classList.remove("vu-pkg-photo-placeholder");
  img.onerror=()=>{img.onerror=null;img.src="assets/vu-unicorn.svg";img.classList.add("vu-pkg-photo-placeholder")};
 }
 function setupPackageMedia(){
  const select=$("vu-media-item");if(!select)return;
- const items=[...data.drinks.map(x=>({...x,kind:"drink"})),...data.services.map(x=>({...x,kind:"service"})),{id:"mobile-bar",name:"Mobile cocktail bar van",kind:"feature"},{id:"limo-hire",name:"Limousine hire",kind:"feature"}];
+ const items=[...data.recipes.map(x=>({...x,id:x.id||x.name,kind:"cocktail"})),...data.drinks.map(x=>({...x,kind:"drink"})),...data.services.map(x=>({...x,kind:"service"})),{id:"mobile-bar",name:"Mobile cocktail bar van",kind:"feature"},{id:"limo-hire",name:"Limousine hire",kind:"feature"}];
  select.replaceChildren(new Option("Choose an item",""));for(const x of items)select.append(new Option(x.name,pkgImageKey(x)));
  const preview=()=>{const url=$("vu-media-url").value.trim(),img=$("vu-media-preview");img.src=url||"assets/vu-unicorn.svg";$("vu-media-placeholder").hidden=!!url;img.onerror=()=>{img.onerror=null;img.src="assets/vu-unicorn.svg";$("vu-media-placeholder").hidden=false}};
  select.onchange=()=>{$("vu-media-url").value=packageImages[select.value]||"";preview()};
@@ -29,7 +30,7 @@ function setupPackageMedia(){
  document.addEventListener("vu:package-image-error",e=>{$("vu-media-status").textContent="Could not save: "+e.detail});
  document.dispatchEvent(new Event("vu:package-media-ready"));
 }
-let pkgCategory="Drinks",pkgCustom=[],pkgDraftId=null,pkgDrafts=[],pkgStep="plan";
+let pkgCategory="Cocktails",pkgCustom=[],pkgDraftId=null,pkgDrafts=[],pkgStep="plan";
 const pkgFields=["vu-plan-name","vu-plan-customer","vu-pkg-occasion","vu-plan-guests","vu-pkg-start","vu-pkg-end","vu-pkg-location","vu-plan-budget","vu-pkg-requests","vu-plan-discount","vu-pkg-van-enabled","vu-pkg-van-fee","vu-pkg-van-hours","vu-pkg-van-cost","vu-pkg-van-expenses","vu-pkg-limo-enabled","vu-pkg-limo-fee","vu-pkg-limo-hours","vu-pkg-limo-expenses","vu-pkg-extra-cost","vu-pkg-adjustment","vu-pkg-bartenders","vu-pkg-dancers","vu-pkg-djs","vu-pkg-security","vu-pkg-drivers","vu-pkg-status","vu-pkg-itinerary","vu-pkg-checklist"];
 const pkgNum=id=>Number($(id)?.value||0)||0;
 function pkgTotals(){
@@ -58,16 +59,23 @@ function updatePackageTotals(){
  set("vu-pkg-limo-break-even",t.limo?"Limo purchase: $69,000 · "+(limoNet>0?"About "+Math.ceil(69000/limoNet)+" hires to recover purchase price at this net hire contribution (excluding other costs).":"Enter a hire fee above running costs to estimate purchase payback."):"Limo purchase budget: $69,000. Select hire to calculate.");
  const review=$("vu-pkg-review");if(review){review.replaceChildren();for(const x of t.all)review.append(el("p",null,x.name+" × "+x.quantity+" = "+cash(x.price*x.quantity)));review.append(el("strong",null,"Customer quote: "+cash(t.total)));review.append(el("p","muted","Occasion: "+($("vu-pkg-occasion")?.value||"")+" · Guests: "+guests+" · Status: "+($("vu-pkg-status")?.value||"Draft")));}
 }
+function pkgCocktailPrice(item){
+ const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
+ const match=Object.entries(sharedSellingPrices).find(([key,v])=>key.startsWith("Cocktails::")&&v!==null&&Number.isFinite(Number(v))&&norm(key.split("::").slice(1).join("::"))===norm(item.name));
+ if(match)return {price:Number(match[1]),estimated:false};
+ const cost=typeof recipeCost==="function"?recipeCost(item):null,margin=Number(sharedSellingPrices.__defaultMargin??30);
+ return {price:cost===null||!Number.isFinite(cost)?null:Math.ceil(cost/(1-Math.min(90,Math.max(0,margin))/100)/5)*5,estimated:true};
+}
 function renderPackageCreator(){
  const root=$("package-options");if(!root)return;
  const old=new Map(packageEntries.map(x=>[x.kind+":"+x.id,x]));root.replaceChildren();packageEntries=[];
- const items=[...data.drinks.map(x=>({...x,kind:"drink"})),...data.services.map(x=>({...x,kind:"service"}))];
- const categories=["Drinks","Services"];const tabs=$("vu-pkg-category-tabs");tabs.replaceChildren();
+ const items=[...data.recipes.map(x=>({...x,id:x.id||x.name,kind:"cocktail"})),...data.drinks.map(x=>({...x,kind:"drink"})),...data.services.map(x=>({...x,kind:"service"}))];
+ const categories=["Cocktails","Drinks","Services"];const tabs=$("vu-pkg-category-tabs");tabs.replaceChildren();
  for(const cat of categories){const b=el("button",cat===pkgCategory?"active":"",cat);b.type="button";b.onclick=()=>{pkgCategory=cat;renderPackageCreator()};tabs.append(b);}
  for(const item of items){
-  const pricing=packagePrice(item),prev=old.get(item.kind+":"+item.id),entry={...item,price:prev?.price??pricing.price,quantity:prev?.quantity||0};packageEntries.push(entry);
-  if((item.kind==="service"?"Services":"Drinks")!==pkgCategory)continue;
-  const card=el("article","vu-package-card"),top=el("div","vu-package-card-top"),image=el("img","vu-item-icon");image.alt="";image.loading="lazy";pkgApplyImage(image,item);
+  const pricing=item.kind==="cocktail"?pkgCocktailPrice(item):packagePrice(item),prev=old.get(item.kind+":"+item.id),entry={...item,price:prev?.price??pricing.price,quantity:prev?.quantity||0};packageEntries.push(entry);
+  if((item.kind==="service"?"Services":item.kind==="cocktail"?"Cocktails":"Drinks")!==pkgCategory)continue;
+  const card=el("article","vu-package-card"),top=el("div","vu-package-card-top"),image=el("img","vu-item-icon");image.alt=item.name;image.loading="lazy";pkgApplyImage(image,item);
   const info=el("div","vu-package-info");info.append(el("strong",null,item.name));top.append(image,info);
   const priceRow=el("label","vu-package-price-row","Quote price ($)"),priceInput=el("input");priceInput.type="number";priceInput.min="0";priceInput.step="0.01";priceInput.value=validPrice(entry.price)?String(entry.price):"";priceInput.setAttribute("aria-label",item.name+" price");
   const control=el("div","vu-package-control"),minus=el("button",null,"−"),plus=el("button",null,"+"),slider=el("input"),count=el("strong",null,String(entry.quantity));
