@@ -38,10 +38,10 @@ function pkgTotals(){
  const customs=pkgCustom.filter(x=>x.quantity>0);
  const van=$("vu-pkg-van-enabled")?.checked,limo=$("vu-pkg-limo-enabled")?.checked;
  const extras=[...(van?[{name:"Mobile cocktail bar hire",quantity:1,price:pkgNum("vu-pkg-van-fee")}]:[]),...(limo?[{name:"Limousine hire",quantity:1,price:pkgNum("vu-pkg-limo-fee")}]:[])];
- const all=[...lines,...customs,...extras];
+ const all=[...lines.filter(x=>x.kind!=="special"),...customs,...extras];
  const subtotal=all.reduce((s,x)=>s+x.price*x.quantity,0),discount=pkgNum("vu-plan-discount"),adjustment=pkgNum("vu-pkg-adjustment"),total=Math.max(0,subtotal*(1-discount/100)+adjustment);
- const known=lines.reduce((s,x)=>s+(Object.hasOwn(packageBaseCosts,x.id)?packageBaseCosts[x.id]*x.quantity:0),0)+customs.reduce((s,x)=>s+x.cost*x.quantity,0)+(van?pkgNum("vu-pkg-van-expenses"):0)+(limo?pkgNum("vu-pkg-limo-expenses"):0)+pkgNum("vu-pkg-extra-cost");
- const missing=lines.filter(x=>!Object.hasOwn(packageBaseCosts,x.id)).length;
+ const known=lines.filter(x=>x.kind!=="special").reduce((s,x)=>s+(Object.hasOwn(packageBaseCosts,x.id)?packageBaseCosts[x.id]*x.quantity:0),0)+customs.reduce((s,x)=>s+x.cost*x.quantity,0)+(van?pkgNum("vu-pkg-van-expenses"):0)+(limo?pkgNum("vu-pkg-limo-expenses"):0)+pkgNum("vu-pkg-extra-cost");
+ const missing=lines.filter(x=>x.kind!=="special"&&!Object.hasOwn(packageBaseCosts,x.id)).length;
  return {all,subtotal,discount,total,known,missing,profit:total-known,van,limo};
 }
 function updatePackageTotals(){
@@ -71,12 +71,14 @@ function renderPackageCreator(){
  const root=$("package-options");if(!root)return;
  const old=new Map(packageEntries.map(x=>[x.kind+":"+x.id,x]));root.replaceChildren();packageEntries=[];
  const items=[...data.recipes.map(x=>({...x,id:x.id||x.name,kind:"cocktail"})),...data.drinks.map(x=>({...x,kind:"drink"})),...data.services.map(x=>({...x,kind:"service"}))];
- const categories=["Cocktails","Drinks","Services"];const tabs=$("vu-pkg-category-tabs");tabs.replaceChildren();
+ const categories=["Cocktails","Alcohol","Soft Drinks","Food & Snacks","Services"];const tabs=$("vu-pkg-category-tabs");tabs.replaceChildren();
  const search=$("vu-pkg-search"),selectedOnly=$("vu-pkg-selected-only");if(search&&!search.dataset.wired){search.dataset.wired="1";search.addEventListener("input",()=>renderPackageCreator())}if(selectedOnly&&!selectedOnly.dataset.wired){selectedOnly.dataset.wired="1";selectedOnly.addEventListener("change",()=>renderPackageCreator())}
  for(const cat of categories){const b=el("button",cat===pkgCategory?"active":"",cat);b.type="button";b.onclick=()=>{pkgCategory=cat;renderPackageCreator()};tabs.append(b);}
+ for(const extra of [{id:"vu-mobile-bar",name:"Mobile cocktail bar van",kind:"special"},{id:"vu-limousine",name:"Limousine hire",kind:"special"},{id:"vu-room-hire",name:"Room / venue hire",kind:"special"}])items.push(extra);
  for(const item of items){
-  const pricing=item.kind==="cocktail"?pkgCocktailPrice(item):packagePrice(item),prev=old.get(item.kind+":"+item.id),entry={...item,price:prev?.price??pricing.price,quantity:prev?.quantity||0};packageEntries.push(entry);
-  if((item.kind==="service"?"Services":item.kind==="cocktail"?"Cocktails":"Drinks")!==pkgCategory)continue;
+  const pricing=item.kind==="cocktail"?pkgCocktailPrice(item):item.kind==="special"?{price:null}:packagePrice(item),prev=old.get(item.kind+":"+item.id),entry={...item,price:prev?.price??pricing.price,quantity:prev?.quantity||0};packageEntries.push(entry);
+  const category=item.kind==="cocktail"?"Cocktails":(item.kind==="service"||item.kind==="special")?"Services":(/food|snack|chips|burger|pizza|sandwich|salad|meal|fries|hotdog|chocolate|candy|donut|cake/i.test(item.category||"")?"Food & Snacks":/whiskey|whisky|vodka|rum|tequila|gin|beer|cider|wine|absinthe|bourbon|brandy|champagne|liquor|spirits/i.test(item.name+" "+(item.category||""))?"Alcohol":"Soft Drinks");
+  if(category!==pkgCategory)continue;
   if(search?.value.trim()&&!item.name.toLowerCase().includes(search.value.trim().toLowerCase()))continue;
 
   const card=el("article","vu-package-card"),top=el("div","vu-package-card-top"),image=el("img","vu-item-icon");image.alt=item.name;image.loading="lazy";pkgApplyImage(image,item);
@@ -86,17 +88,19 @@ function renderPackageCreator(){
   minus.type=plus.type="button";slider.type="range";slider.min="0";slider.max="100";slider.step="1";slider.value=String(entry.quantity);
   const sync=()=>{card.classList.toggle("vu-pkg-picked",entry.quantity>0);slider.disabled=!validPrice(entry.price);minus.disabled=plus.disabled=slider.disabled;slider.value=String(entry.quantity);count.textContent=String(entry.quantity);updatePackageTotals();};
   priceInput.oninput=()=>{entry.price=priceInput.value===""?null:Number(priceInput.value);if(!validPrice(entry.price))entry.quantity=0;sync();};
-  const set=n=>{entry.quantity=Math.max(0,Math.min(100,n));sync()};minus.onclick=()=>set(entry.quantity-1);plus.onclick=()=>set(entry.quantity+1);slider.oninput=()=>set(Number(slider.value));
+  const set=n=>{entry.quantity=Math.max(0,Math.min(100,n));if(item.kind==="special"){const id=item.id==="vu-mobile-bar"?"vu-pkg-van-enabled":item.id==="vu-limousine"?"vu-pkg-limo-enabled":null;if(id)$(id).checked=entry.quantity>0;}sync();pkgUpdateServiceDetails()};minus.onclick=()=>set(entry.quantity-1);plus.onclick=()=>set(entry.quantity+1);slider.oninput=()=>set(Number(slider.value));
   priceRow.append(priceInput);control.append(minus,slider,count,plus);card.append(top,priceRow,control);root.append(card);sync();
  }
  updatePackageTotals();pkgUpdateServiceDetails();
 }
 function pkgUpdateServiceDetails(){
  const root=$("vu-pkg-service-fields"),wrap=$("vu-pkg-service-detail");if(!root||!wrap)return;
- const selected=packageEntries.filter(x=>x.kind==="service"&&x.quantity>0);wrap.hidden=!selected.length;
+ const selected=packageEntries.filter(x=>(x.kind==="service"||x.kind==="special")&&x.quantity>0);wrap.hidden=!selected.length;
  root.replaceChildren();for(const item of selected){
   const row=el("div","vu-pkg-service-row");row.append(el("strong",null,item.name+" × "+item.quantity));
-  const label=el("label",null,"Service arrangements / requests"),input=el("textarea");input.rows=2;input.placeholder="Timing, location, requirements or special arrangements";
+  const opts=el("div","vu-pkg-service-options");const presets=item.id==="vu-room-hire"||/venue|room/i.test(item.name)?["Main venue","Private room","VIP area","Entire venue"]: /dancer/i.test(item.name)?["Standard performance","VIP performance","Private booking","Themed request"]: /dj/i.test(item.name)?["Club set","Private event","Requested genre","Custom playlist"]:item.id==="vu-mobile-bar"?["Van only","VU then off-site","Off-site event"]:item.id==="vu-limousine"?["One-way transfer","Return journey","Hourly hire"]:["Standard","Custom requirements"];
+  const choice=el("select"),keyChoice="choice:"+item.id;for(const opt of ["Choose option",...presets])choice.append(new Option(opt,opt==="Choose option"?"":opt));choice.value=pkgServiceNotes[keyChoice]||"";choice.onchange=()=>pkgServiceNotes[keyChoice]=choice.value;opts.append(choice);row.append(opts);
+  const label=el("label",null,"Timing, requests or requirements"),input=el("textarea");input.rows=2;input.placeholder="Optional details";
   const key="vu-pkg-service-note-"+String(item.id).replace(/[^a-z0-9]/gi,"-");input.value=pkgServiceNotes[key]||"";input.oninput=()=>{pkgServiceNotes[key]=input.value};label.append(input);row.append(label);root.append(row);
  }
 }
@@ -127,7 +131,7 @@ function pkgSetStep(step){
 }
 function setupPackagePlanner(){
  const apply=$("vu-pkg-apply-staff");if(apply)apply.onclick=()=>{for(const [id,n] of Object.entries(pkgStaffSuggestion()))if($(id))$(id).value=n;updatePackageTotals()};
- const cocktail=$("vu-pkg-van-cocktail");if(cocktail){for(const item of data.recipes)cocktail.append(new Option(item.name,item.name));cocktail.onchange=()=>{const item=data.recipes.find(x=>x.name===cocktail.value);if(!item)return;$("vu-pkg-custom-name").value=item.name;const p=pkgCocktailPrice(item);if(validPrice(p.price))$("vu-pkg-custom-price").value=p.price;};}
+ const cocktail=$("vu-pkg-van-cocktail");if(cocktail){for(const item of data.recipes)cocktail.append(new Option(item.name,item.name));cocktail.onchange=()=>{const item=data.recipes.find(x=>x.name===cocktail.value);if(!item)return;$("vu-pkg-custom-name").value=item.name;const p=pkgCocktailPrice(item);if(validPrice(p.price))$("vu-pkg-custom-price").value=p.price;const cost=typeof pkgRecipeUnitCost==="function"?pkgRecipeUnitCost(item):null;if(validPrice(cost)){$("vu-pkg-custom-cost").value=cost.toFixed(2);$("vu-pkg-van-cost-note").textContent="Recipe ingredient cost: "+cash(cost)+" per cocktail, included in package profit calculations.";}else{$("vu-pkg-custom-cost").value="";$("vu-pkg-van-cost-note").textContent="Ingredient cost unavailable: check the Recipe Book costing before confirming profit.";}};}
 
  if(!$("vu-pkg-save"))return;
  const steps=["plan","build","price","organise","confirm"];
@@ -137,7 +141,7 @@ function setupPackagePlanner(){
  pkgFields.forEach(id=>$(id)?.addEventListener("input",updatePackageTotals));
  $("vu-pkg-custom-add").onclick=()=>{
   const name=$("vu-pkg-custom-name").value.trim(),quantity=Math.max(1,Math.floor(pkgNum("vu-pkg-custom-qty"))),price=pkgNum("vu-pkg-custom-price"),cost=pkgNum("vu-pkg-custom-cost");
-  if(!name){alert("Enter a drink name.");return}pkgCustom.push({name,quantity,price,cost});$("vu-pkg-custom-name").value="";pkgRenderCustom();updatePackageTotals();
+  if(!name){alert("Choose or enter a drink name.");return}if($("vu-pkg-van-cocktail").value&&!validPrice(Number($("vu-pkg-custom-cost").value))){alert("Ingredient cost is missing. Check recipe costing first.");return}pkgCustom.push({name,quantity,price,cost});$("vu-pkg-custom-name").value="";pkgRenderCustom();updatePackageTotals();
  };
  document.querySelectorAll("[data-pkg-template]").forEach(b=>b.onclick=()=>{
   const kind=b.dataset.pkgTemplate,settings={birthday:["Birthday celebration","Birthday",20],vip:["VIP night","VIP night",10],mobile:["Mobile cocktail experience","Mobile bar event",30],limo:["Limousine night out","Limo experience",6]}[kind];
