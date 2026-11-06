@@ -438,7 +438,7 @@ function setupOrderCalculator(data){
   const id=$("vu-package-tab-target").value,items=packageEntries.filter(x=>x.quantity>0&&validPrice(x.price));
   if(!id){$("vu-package-tab-status").textContent="Choose a customer tab first.";return;}
   if(!items.length){$("vu-package-tab-status").textContent="Select at least one priced package item.";return;}
-  for(const item of items)send("add",{id,item:{name:item.name,quantity:item.quantity,price:item.price}});
+  send("addMany",{id,items:items.map(item=>({name:item.name,quantity:item.quantity,price:item.price}))});
   $("vu-package-tab-status").textContent="Adding "+items.length+" item(s) to customer tab…";
  };
  document.dispatchEvent(new Event("vu:tab-ready"));

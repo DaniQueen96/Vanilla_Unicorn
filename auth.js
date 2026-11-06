@@ -90,7 +90,7 @@ function beginTabSync(){
 document.addEventListener("vu:tab-ready",()=>document.dispatchEvent(new CustomEvent("vu:tabs-updated",{detail:tabCache})));
 document.addEventListener("vu:tab-command",async e=>{
  if(auth.currentUser?.uid!==OWNER_UID)return;
- const {action,id,name,item,lineId}=e.detail||{};
+ const {action,id,name,item,items:incomingItems,lineId}=e.detail||{};
  try{
   if(action==="create"){
    if(typeof name!=="string"||!name.trim()||name.length>80)return;
@@ -101,6 +101,12 @@ document.addEventListener("vu:tab-command",async e=>{
    if(action==="add"){
     if(!item||typeof item.name!=="string"||!Number.isInteger(item.quantity)||item.quantity<1||!Number.isFinite(item.price)||item.price<0)return;
     items.push({lineId:Date.now().toString(36)+Math.random().toString(36).slice(2,8),name:item.name.slice(0,100),quantity:item.quantity,price:item.price});
+   }else if(action==="addMany"){
+    if(!Array.isArray(incomingItems)||!incomingItems.length||incomingItems.length>100)return;
+    for(const entry of incomingItems){
+     if(typeof entry.name!=="string"||!Number.isInteger(entry.quantity)||entry.quantity<1||!Number.isFinite(entry.price)||entry.price<0)return;
+    }
+    for(const entry of incomingItems)items.push({lineId:Date.now().toString(36)+Math.random().toString(36).slice(2,8),name:entry.name.slice(0,100),quantity:entry.quantity,price:entry.price});
    }else if(action==="remove"){items=items.filter(i=>i.lineId!==lineId);}
    else if(action!=="settle")return;
    await setDoc(doc(db,"customerTabs",id),{items,status:action==="settle"?"paid":"open",updatedAt:new Date().toISOString(),...(action==="settle"?{paidAt:new Date().toISOString()}: {})},{merge:true});
@@ -157,7 +163,7 @@ onAuthStateChanged(auth, (user) => {
   if (owner && !appLoaded) {
     appLoaded = true;
     const script = document.createElement("script");
-    script.src = "app.js?v=20261106-customer-tabs2";
+    script.src = "app.js?v=20261106-customer-tabs3";
     document.body.append(script);
   }
   if (user && !owner) signOut(auth);
