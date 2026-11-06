@@ -229,6 +229,16 @@ function setupOrderCalculator(data){
   if(Object.keys(updates).length)document.dispatchEvent(new CustomEvent("vu:seed-prices",{detail:updates}));
   calculate();
  };
+ const clearOrder=()=>{entries.forEach(e=>e.qty=0);root.querySelectorAll(".vu-qty-value").forEach(e=>e.textContent="0");calculate();};
+ document.addEventListener("vu:clear-order",clearOrder);
+ $id("vu-order-paid")?.addEventListener("click",()=>{
+  const selected=lines();
+  if(!selected.length){$id("vu-order-paid-message").textContent="Add items before checkout.";return;}
+  if(selected.some(e=>!Number.isFinite(activePrice(e)))){$id("vu-order-paid-message").textContent="Some items need a selling price in Settings.";return;}
+  const total=selected.reduce((sum,e)=>sum+activePrice(e)*e.qty,0);
+  if(!confirm("Confirm bill paid in city for "+money(total)+"?"))return;
+  clearOrder();$id("vu-order-paid-message").textContent="Paid · "+money(total)+" · order completed.";
+ });
  document.addEventListener("vu:order-request-items",event=>{const callback=event.detail?.callback;if(typeof callback!=="function")return;callback(entries.filter(e=>e.qty>0&&e.price.value!==""&&Number.isFinite(Number(e.price.value))).map(e=>({name:e.item.name,quantity:e.qty,price:Number(e.price.value)})));});
  const entries=[];let active=groups[0][0],pricingActive=groups[0][0];
  const setActive=(group,isPricing)=>{
@@ -342,7 +352,7 @@ function setupOrderCalculator(data){
   for(const e of entries)e.row.hidden=!e.row.dataset.search.includes(q);
   if(q){const first=entries.find(e=>!e.row.hidden);if(first)setActive(first.group,false);}
  });
- $id("order-clear").addEventListener("click",()=>{entries.forEach(e=>e.qty=0);root.querySelectorAll(".vu-qty-value").forEach(e=>e.textContent="0");calculate();});
+ $id("order-clear").addEventListener("click",clearOrder);
  $id("order-copy").addEventListener("click",()=>{
   const selected=lines();if(!selected.length){alert("Add items to the order first.");return;}
   if(selected.some(e=>!Number.isFinite(activePrice(e)))){alert("Set prices in Settings → Pricing Management first.");return;}
@@ -364,8 +374,10 @@ function setupOrderCalculator(data){
 
 (function customerTabs(){
  const create=$("vu-tab-create"),list=$("vu-tab-list"),detail=$("vu-tab-detail"),status=$("vu-tab-status");
- const quick=$("vu-mode-quick"),customer=$("vu-mode-customer"),area=$("customer-tabs"),panel=$("vu-quick-order-panel");
- if(quick&&customer&&area&&panel){const mode=which=>{area.hidden=which!=="customer";panel.hidden=which==="customer";quick.classList.toggle("active",which==="quick");customer.classList.toggle("active",which==="customer");if(which==="quick")panel.open=true;};quick.onclick=()=>mode("quick");customer.onclick=()=>mode("customer");mode("quick");}
+ const createToggle=$("vu-create-tab-toggle"),newOrder=$("vu-new-order"),showTabs=$("vu-show-tabs");
+ if(createToggle)createToggle.onclick=()=>{create.hidden=false;$("vu-tab-name").focus();};
+ if(showTabs)showTabs.onclick=()=>{$("vu-tab-list").scrollIntoView({behavior:"smooth",block:"center"});};
+ if(newOrder)newOrder.onclick=()=>{document.dispatchEvent(new Event("vu:clear-order"));$("vu-quick-order-panel").open=true;$("order-search").focus();};
  if(!create)return;
  let tabs=[],selected=null,costing=null;
  const say=s=>status.textContent=s;
@@ -425,7 +437,7 @@ function setupOrderCalculator(data){
   form.onsubmit=e=>{e.preventDefault();const item=options.find(x=>x.id===select.value),n=Number(count.value),p=Number(custom.value);if(!item||!Number.isInteger(n)||n<1||custom.value===""||!Number.isFinite(p)||p<0){say("Choose an item, valid quantity and price.");return;}send("add",{id:tab.id,item:{name:item.name,quantity:n,price:p}});};
   detail.append(form,button("Mark paid & close tab",()=>{if(confirm("Mark "+tab.name+"'s bill as paid for "+cash(total)+"?"))send("settle",{id:tab.id});}));
  }
- create.onsubmit=e=>{e.preventDefault();const name=$("vu-tab-name").value.trim();if(!name)return;send("create",{name});$("vu-tab-name").value="";};
+ create.onsubmit=e=>{e.preventDefault();const name=$("vu-tab-name").value.trim();if(!name)return;send("create",{name});$("vu-tab-name").value="";create.hidden=true;};
  document.addEventListener("vu:tabs-updated",e=>{
   tabs=Array.isArray(e.detail)?e.detail:[];
   if(!tabs.some(t=>t.id===selected))selected=tabs.find(t=>t.status!=="paid")?.id||tabs[0]?.id||null;
@@ -444,7 +456,7 @@ function setupOrderCalculator(data){
   if(!id){message.textContent="Choose an open customer tab first.";return;}
   document.dispatchEvent(new CustomEvent("vu:order-request-items",{detail:{callback:items=>{
    if(!items.length){message.textContent="Add priced items to the order first.";return;}
-   send("addMany",{id,items});message.textContent="Saving "+items.length+" order lines…";
+   send("addMany",{id,items});message.textContent="Adding "+items.length+" order lines to tab…";document.dispatchEvent(new Event("vu:clear-order"));
   }}}));
  };
  const packageSend=$("vu-package-add-to-tab");

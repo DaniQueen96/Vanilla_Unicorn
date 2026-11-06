@@ -279,3 +279,5 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 @media(max-width:650px){.vu-package-breakdown{grid-template-columns:1fr}}
 
 .vu-order-mode{display:flex;gap:10px;margin:16px 0 20px}.vu-order-mode button{width:auto}.vu-order-mode button.active{background:#743456;border-color:#f28cc4}.vu-order-customer-area{padding:12px 0 20px}.vu-order-customer-area[hidden],#vu-quick-order-panel[hidden]{display:none!important}.vu-order-to-tab{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:18px 0}.vu-order-to-tab label{min-width:220px;flex:1}.vu-order-to-tab button{width:auto}.vu-order-to-tab p{width:100%}
+
+.vu-order-mode{display:flex;flex-wrap:wrap;gap:10px}.vu-order-mode button{width:auto}.vu-order-customer-area{padding:14px 0}.vu-order-customer-area .head{margin:0 0 12px}.vu-order-customer-area .head h2{font-size:1.2rem}.vu-checkout-actions{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}.vu-checkout-actions button{width:auto}#vu-order-paid{background:#8b3463}#vu-tab-create[hidden]{display:none!important}
