@@ -163,7 +163,7 @@ onAuthStateChanged(auth, (user) => {
   if (owner && !appLoaded) {
     appLoaded = true;
     const script = document.createElement("script");
-    script.src = "app.js?v=20261106-single-till2";
+    script.src = "app.js?v=20261106-single-till3";
     document.body.append(script);
   }
   if (user && !owner) signOut(auth);

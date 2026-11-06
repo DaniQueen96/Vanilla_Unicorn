@@ -374,10 +374,10 @@ function setupOrderCalculator(data){
 
 (function customerTabs(){
  const create=$("vu-tab-create"),list=$("vu-tab-list"),detail=$("vu-tab-detail"),status=$("vu-tab-status");
- const createToggle=$("vu-create-tab-toggle"),newOrder=$("vu-new-order"),showTabs=$("vu-show-tabs");
+ const createToggle=$("vu-create-tab-toggle"),newOrder=$("vu-new-order");
  if(createToggle)createToggle.onclick=()=>{create.hidden=false;$("vu-tab-name").focus();};
- if(showTabs)showTabs.onclick=()=>{$("vu-tab-list").scrollIntoView({behavior:"smooth",block:"center"});};
- if(newOrder)newOrder.onclick=()=>{document.dispatchEvent(new Event("vu:clear-order"));$("vu-quick-order-panel").open=true;$("order-search").focus();};
+
+ if(newOrder)newOrder.onclick=()=>{document.dispatchEvent(new Event("vu:clear-order"));$("order-search").focus();};
  if(!create)return;
  let tabs=[],selected=null,costing=null;
  const say=s=>status.textContent=s;
