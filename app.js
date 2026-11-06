@@ -76,7 +76,7 @@ function renderPackageCreator(){
  for(const cat of categories){const b=el("button",cat===pkgCategory?"active":"",cat);b.type="button";b.onclick=()=>{pkgCategory=cat;renderPackageCreator()};tabs.append(b);}
  for(const extra of [{id:"vu-mobile-bar",name:"Mobile cocktail bar van",kind:"special"},{id:"vu-limousine",name:"Limousine hire",kind:"special"},{id:"vu-room-hire",name:"Room / venue hire",kind:"special"}])items.push(extra);
  for(const item of items){
-  const pricing=item.kind==="cocktail"?pkgCocktailPrice(item):item.kind==="special"?{price:null}:packagePrice(item),prev=old.get(item.kind+":"+item.id),entry={...item,price:prev?.price??pricing.price,quantity:prev?.quantity||0};packageEntries.push(entry);
+  const pricing=item.kind==="cocktail"?pkgCocktailPrice(item):item.kind==="special"?{price:0}:packagePrice(item),prev=old.get(item.kind+":"+item.id),entry={...item,price:prev?.price??pricing.price,quantity:prev?.quantity||0};packageEntries.push(entry);
   const category=item.kind==="cocktail"?"Cocktails":(item.kind==="service"||item.kind==="special")?"Services":(/food|snack|chips|burger|pizza|sandwich|salad|meal|fries|hotdog|chocolate|candy|donut|cake/i.test(item.category||"")?"Food & Snacks":/whiskey|whisky|vodka|rum|tequila|gin|beer|cider|wine|absinthe|bourbon|brandy|champagne|liquor|spirits/i.test(item.name+" "+(item.category||""))?"Alcohol":"Soft Drinks");
   if(category!==pkgCategory)continue;
   if(search?.value.trim()&&!item.name.toLowerCase().includes(search.value.trim().toLowerCase()))continue;
@@ -141,7 +141,7 @@ function setupPackagePlanner(){
  pkgFields.forEach(id=>$(id)?.addEventListener("input",updatePackageTotals));
  $("vu-pkg-custom-add").onclick=()=>{
   const name=$("vu-pkg-custom-name").value.trim(),quantity=Math.max(1,Math.floor(pkgNum("vu-pkg-custom-qty"))),price=pkgNum("vu-pkg-custom-price"),cost=pkgNum("vu-pkg-custom-cost");
-  if(!name){alert("Choose or enter a drink name.");return}if($("vu-pkg-van-cocktail").value&&!validPrice(Number($("vu-pkg-custom-cost").value))){alert("Ingredient cost is missing. Check recipe costing first.");return}pkgCustom.push({name,quantity,price,cost});$("vu-pkg-custom-name").value="";pkgRenderCustom();updatePackageTotals();
+  if(!name){alert("Choose or enter a drink name.");return}if($("vu-pkg-van-cocktail").value&&$("vu-pkg-custom-cost").value===""){alert("Ingredient cost is missing. Check recipe costing first.");return}pkgCustom.push({name,quantity,price,cost});$("vu-pkg-custom-name").value="";pkgRenderCustom();updatePackageTotals();
  };
  document.querySelectorAll("[data-pkg-template]").forEach(b=>b.onclick=()=>{
   const kind=b.dataset.pkgTemplate,settings={birthday:["Birthday celebration","Birthday",20],vip:["VIP night","VIP night",10],mobile:["Mobile cocktail experience","Mobile bar event",30],limo:["Limousine night out","Limo experience",6]}[kind];
