@@ -79,6 +79,10 @@ document.addEventListener("vu:save-price",async event=>{
  }catch(error){if(status)status.textContent="Save failed: "+error.message;}
 });
 
+const packageCollection=collection(db,"packagePlans");let packagePlans=[],stopPackagePlans=null;
+function beginPackageSync(){if(stopPackagePlans)return;stopPackagePlans=onSnapshot(packageCollection,s=>{packagePlans=s.docs.map(d=>({id:d.id,...d.data()}));document.dispatchEvent(new CustomEvent("vu:packages-updated",{detail:packagePlans}));},error=>document.dispatchEvent(new CustomEvent("vu:package-error",{detail:error.message})))}
+document.addEventListener("vu:package-ready",()=>{beginPackageSync();document.dispatchEvent(new CustomEvent("vu:packages-updated",{detail:packagePlans}))});
+document.addEventListener("vu:package-save",async e=>{if(auth.currentUser?.uid!==OWNER_UID)return;const {id,fields,items,custom,updatedAt}=e.detail||{};if(!id||!fields)return;try{await setDoc(doc(db,"packagePlans",id),{fields,items,custom,updatedAt},{merge:true});document.dispatchEvent(new Event("vu:package-saved"));}catch(error){document.dispatchEvent(new CustomEvent("vu:package-error",{detail:error.message}))}});
 const tabCollection=collection(db,"customerTabs");
 const customerCollection=collection(db,"customers");
 let customerCache=[];let stopCustomersListener=null;
@@ -175,7 +179,7 @@ onAuthStateChanged(auth, (user) => {
   if (owner && !appLoaded) {
     appLoaded = true;
     const script = document.createElement("script");
-    script.src = "app.js?v=20261106-unified-till4";
+    script.src = "app.js?v=20261106-package-overhaul1";
     document.body.append(script);
   }
   if (user && !owner) signOut(auth);
