@@ -292,3 +292,5 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 .vu-order-customer-area{border:1px solid #663451;border-radius:14px;padding:16px;margin-top:16px}.vu-tab-header{display:flex;align-items:center;justify-content:space-between;gap:12px}.vu-tab-header button{width:auto}
 .vu-order-mode{align-items:center}.vu-order-mode span{flex:1;color:#dcb8d3}.vu-order-mode strong{white-space:nowrap}
 @media(max-width:1050px){.vu-till-columns{grid-template-columns:1fr}.vu-till-basket{position:static}}
+
+.vu-customer-search{display:block;margin:12px 0}.vu-customer-search input{width:100%}.vu-customer-list{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.vu-customer-list button,.vu-customer-profile button{width:auto}.vu-customer-list button.active{background:#8c356a}.vu-customer-profile{border:1px solid #63334e;border-radius:12px;padding:14px;margin:12px 0}.vu-customer-profile button{margin:5px}.vu-customer-profile h4{margin:0 0 8px}

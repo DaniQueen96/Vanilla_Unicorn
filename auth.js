@@ -80,19 +80,31 @@ document.addEventListener("vu:save-price",async event=>{
 });
 
 const tabCollection=collection(db,"customerTabs");
+const customerCollection=collection(db,"customers");
+let customerCache=[];let stopCustomersListener=null;
 function beginTabSync(){
+ if(!stopCustomersListener)stopCustomersListener=onSnapshot(customerCollection,snapshot=>{customerCache=snapshot.docs.map(d=>({id:d.id,...d.data()}));document.dispatchEvent(new CustomEvent("vu:customers-updated",{detail:customerCache}));},error=>document.dispatchEvent(new CustomEvent("vu:tab-error",{detail:"Unable to load customers: "+error.message})));
  if(stopTabsListener)return;
  stopTabsListener=onSnapshot(tabCollection,snapshot=>{
   tabCache=snapshot.docs.map(d=>({id:d.id,...d.data()}));
   document.dispatchEvent(new CustomEvent("vu:tabs-updated",{detail:tabCache}));
  },error=>document.dispatchEvent(new CustomEvent("vu:tab-error",{detail:"Unable to load customer tabs: "+error.message})));
 }
-document.addEventListener("vu:tab-ready",()=>document.dispatchEvent(new CustomEvent("vu:tabs-updated",{detail:tabCache})));
+document.addEventListener("vu:tab-ready",()=>{document.dispatchEvent(new CustomEvent("vu:tabs-updated",{detail:tabCache}));document.dispatchEvent(new CustomEvent("vu:customers-updated",{detail:customerCache}));});
 document.addEventListener("vu:tab-command",async e=>{
  if(auth.currentUser?.uid!==OWNER_UID)return;
- const {action,id,name,item,items:incomingItems,lineId}=e.detail||{};
+ const {action,id,name,item,items:incomingItems,lineId,customerId}=e.detail||{};
  try{
-  if(action==="create"){
+  if(action==="createCustomer"){
+   const clean=typeof name==="string"?name.trim():"";
+   if(!clean||clean.length>80)return;
+   if(customerCache.some(c=>c.name.toLocaleLowerCase()===clean.toLocaleLowerCase())){document.dispatchEvent(new CustomEvent("vu:tab-error",{detail:"Customer already exists. Select their saved profile instead."}));return;}
+   await addDoc(customerCollection,{name:clean,createdAt:new Date().toISOString()});
+  }else if(action==="newBill"){
+   const customer=customerCache.find(c=>c.id===customerId);if(!customer)return;
+   if(tabCache.some(t=>t.customerId===customerId&&t.status!=="paid")){document.dispatchEvent(new CustomEvent("vu:tab-error",{detail:"This customer already has an open bill."}));return;}
+   await addDoc(tabCollection,{customerId,name:customer.name,status:"open",items:[],updatedAt:new Date().toISOString(),createdAt:new Date().toISOString()});
+  }else if(action==="create"){
    if(typeof name!=="string"||!name.trim()||name.length>80)return;
    await addDoc(tabCollection,{name:name.trim(),status:"open",items:[],updatedAt:new Date().toISOString(),createdAt:new Date().toISOString()});
   }else{
@@ -163,7 +175,7 @@ onAuthStateChanged(auth, (user) => {
   if (owner && !appLoaded) {
     appLoaded = true;
     const script = document.createElement("script");
-    script.src = "app.js?v=20261106-single-till3";
+    script.src = "app.js?v=20261106-customer-profiles1";
     document.body.append(script);
   }
   if (user && !owner) signOut(auth);

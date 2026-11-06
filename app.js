@@ -379,7 +379,7 @@ function setupOrderCalculator(data){
 
  if(newOrder)newOrder.onclick=()=>{document.dispatchEvent(new Event("vu:clear-order"));$("order-search").focus();};
  if(!create)return;
- let tabs=[],selected=null,costing=null;
+ let tabs=[],customers=[],selected=null,selectedCustomer=null,costing=null;
  const say=s=>status.textContent=s;
  const send=(action,payload)=>document.dispatchEvent(new CustomEvent("vu:tab-command",{detail:{action,...payload}}));
  const key=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
@@ -402,8 +402,36 @@ function setupOrderCalculator(data){
  };
  const button=(text,handler)=>{const b=el("button",null,text);b.type="button";b.onclick=handler;return b;};
  function draw(){
+  const customerList=$("vu-customer-list"),profile=$("vu-customer-profile"),term=String($("vu-customer-search")?.value||"").trim().toLowerCase();
+  if(customerList){
+   customerList.replaceChildren();
+   for(const c of [...customers].sort((x,y)=>x.name.localeCompare(y.name)).filter(c=>c.name.toLowerCase().includes(term))){
+    const open=tabs.find(t=>t.customerId===c.id&&t.status!=="paid");
+    const b=button(c.name+(open?" · Open bill":" · No open bill"),()=>{selectedCustomer=c.id;selected=open?.id||null;draw();});
+    if(c.id===selectedCustomer)b.classList.add("active");
+    customerList.append(b);
+   }
+   if(!customers.length)customerList.append(el("p","muted","No saved customers yet. Add your first customer."));
+   else if(!customerList.children.length)customerList.append(el("p","muted","No matching customers."));
+  }
+  if(profile){
+   profile.replaceChildren();
+   const c=customers.find(c=>c.id===selectedCustomer);
+   if(c){
+    profile.append(el("h4",null,c.name));
+    const history=tabs.filter(t=>t.customerId===c.id).sort((x,y)=>String(y.createdAt||"").localeCompare(String(x.createdAt||"")));
+    const open=history.find(t=>t.status!=="paid");
+    if(open)profile.append(button("Open current bill",()=>{selected=open.id;draw();}));
+    else profile.append(button("+ Start new bill",()=>send("newBill",{customerId:c.id})));
+    profile.append(el("p","muted",history.length+" bill(s) · "+history.filter(t=>t.status==="paid").length+" paid"));
+    for(const t of history){
+     const total=(t.items||[]).reduce((s,i)=>s+Number(i.price)*Number(i.quantity),0);
+     profile.append(button((t.status==="paid"?"Paid":"Open")+" · "+cash(total)+" · "+new Date(t.createdAt||t.updatedAt||Date.now()).toLocaleDateString(),()=>{selected=t.id;draw();}));
+    }
+   }else profile.append(el("p","muted","Select a saved customer to see their current bill and past visits."));
+  }
   list.replaceChildren();
-  const ordered=[...tabs].sort((x,y)=>(x.status==="paid")-(y.status==="paid")||String(y.updatedAt||"").localeCompare(String(x.updatedAt||"")));
+  const ordered=[...tabs].filter(t=>!t.customerId&&t.status!=="paid").sort((x,y)=>(x.status==="paid")-(y.status==="paid")||String(y.updatedAt||"").localeCompare(String(x.updatedAt||"")));
   for(const t of ordered){
    const total=(t.items||[]).reduce((s,i)=>s+Number(i.price)*Number(i.quantity),0);
    const b=button(t.name+" · "+cash(total)+(t.status==="paid"?" · Paid":""),()=>{selected=t.id;draw();});
@@ -437,13 +465,15 @@ function setupOrderCalculator(data){
   form.onsubmit=e=>{e.preventDefault();const item=options.find(x=>x.id===select.value),n=Number(count.value),p=Number(custom.value);if(!item||!Number.isInteger(n)||n<1||custom.value===""||!Number.isFinite(p)||p<0){say("Choose an item, valid quantity and price.");return;}send("add",{id:tab.id,item:{name:item.name,quantity:n,price:p}});};
   detail.append(form,button("Mark paid & close tab",()=>{if(confirm("Mark "+tab.name+"'s bill as paid for "+cash(total)+"?"))send("settle",{id:tab.id});}));
  }
- create.onsubmit=e=>{e.preventDefault();const name=$("vu-tab-name").value.trim();if(!name)return;send("create",{name});$("vu-tab-name").value="";create.hidden=true;};
+ create.onsubmit=e=>{e.preventDefault();const name=$("vu-tab-name").value.trim();if(!name)return;send("createCustomer",{name});$("vu-tab-name").value="";create.hidden=true;};
+ $("vu-customer-search")?.addEventListener("input",draw);
+ document.addEventListener("vu:customers-updated",e=>{customers=Array.isArray(e.detail)?e.detail:[];draw();});
  document.addEventListener("vu:tabs-updated",e=>{
   tabs=Array.isArray(e.detail)?e.detail:[];
-  if(!tabs.some(t=>t.id===selected))selected=tabs.find(t=>t.status!=="paid")?.id||tabs[0]?.id||null;
+  if(selected&&!tabs.some(t=>t.id===selected))selected=null;
   const picker=$("vu-package-tab-target");
-  if(picker){const current=picker.value;picker.replaceChildren(new Option("Select open customer tab",""));for(const t of tabs.filter(t=>t.status!=="paid"))picker.append(new Option(t.name,t.id));picker.value=tabs.some(t=>t.id===current&&t.status!=="paid")?current:"";}
-  const orderPicker=$("vu-order-tab-target");if(orderPicker){const previous=orderPicker.value;orderPicker.replaceChildren(new Option("Select customer",""));for(const t of tabs.filter(t=>t.status!=="paid"))orderPicker.append(new Option(t.name,t.id));orderPicker.value=tabs.some(t=>t.id===previous&&t.status!=="paid")?previous:"";}
+  if(picker){const current=picker.value;picker.replaceChildren(new Option("Select open customer tab",""));for(const t of tabs.filter(t=>t.status!=="paid"))picker.append(new Option(customers.find(c=>c.id===t.customerId)?.name||t.name,t.id));picker.value=tabs.some(t=>t.id===current&&t.status!=="paid")?current:"";}
+  const orderPicker=$("vu-order-tab-target");if(orderPicker){const previous=orderPicker.value;orderPicker.replaceChildren(new Option("Select customer",""));for(const t of tabs.filter(t=>t.status!=="paid"))orderPicker.append(new Option(customers.find(c=>c.id===t.customerId)?.name||t.name,t.id));orderPicker.value=tabs.some(t=>t.id===previous&&t.status!=="paid")?previous:"";}
   draw();
  });
  document.addEventListener("vu:tab-error",e=>say(e.detail||"Unable to save tab."));
