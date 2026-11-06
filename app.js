@@ -109,6 +109,9 @@ function setupWasteCalculator(recipes){
  const stock=new Map(),targets=new Map(),pick=$id("waste-pick"),chips=$id("waste-ingredients"),results=$id("waste-results"),planResults=$id("waste-plan-results");
  if(!pick||!chips||!results||!planResults)return;
  for(const name of names){const option=document.createElement("option");option.value=name;option.textContent=name;pick.append(option);}
+ const quick=$id("waste-quick"),search=$id("waste-search");
+ const renderQuick=()=>{quick.replaceChildren();const query=search.value.trim().toLowerCase();for(const name of names.filter(n=>n.toLowerCase().includes(query)).slice(0,18)){const b=el("button","vu-waste-quick-button",name+" +1");b.type="button";b.onclick=()=>{stock.set(name,have(name)+1);render();};quick.append(b);}};
+ search.addEventListener("input",renderQuick);renderQuick();
  for(const r of recipes){const label=el("label",null,r.name);const input=document.createElement("input");input.type="number";input.min="0";input.step="1";input.value="0";input.setAttribute("aria-label",r.name+" quantity");input.addEventListener("input",render);label.append(input);$id("waste-recipes").append(label);targets.set(r.name,input);}
  const have=name=>stock.get(name)||0;
  function render(){
@@ -419,10 +422,24 @@ function setupOrderCalculator(data){
   detail.append(form,button("Mark paid & close tab",()=>{if(confirm("Mark "+tab.name+"'s bill as paid for "+cash(total)+"?"))send("settle",{id:tab.id});}));
  }
  create.onsubmit=e=>{e.preventDefault();const name=$("vu-tab-name").value.trim();if(!name)return;send("create",{name});$("vu-tab-name").value="";};
- document.addEventListener("vu:tabs-updated",e=>{tabs=Array.isArray(e.detail)?e.detail:[];if(!tabs.some(t=>t.id===selected))selected=tabs.find(t=>t.status!=="paid")?.id||tabs[0]?.id||null;draw();});
+ document.addEventListener("vu:tabs-updated",e=>{
+  tabs=Array.isArray(e.detail)?e.detail:[];
+  if(!tabs.some(t=>t.id===selected))selected=tabs.find(t=>t.status!=="paid")?.id||tabs[0]?.id||null;
+  const picker=$("vu-package-tab-target");
+  if(picker){const current=picker.value;picker.replaceChildren(new Option("Select open customer tab",""));for(const t of tabs.filter(t=>t.status!=="paid"))picker.append(new Option(t.name,t.id));picker.value=tabs.some(t=>t.id===current&&t.status!=="paid")?current:"";}
+  draw();
+ });
  document.addEventListener("vu:tab-error",e=>say(e.detail||"Unable to save tab."));
  document.addEventListener("vu:tab-success",e=>say(e.detail||"Saved."));
  document.addEventListener("vu:costing-updated",e=>{if(e.detail?.recipes)costing=e.detail;});
  document.addEventListener("vu:tab-catalog-updated",draw);
+ const packageSend=$("vu-package-add-to-tab");
+ if(packageSend)packageSend.onclick=()=>{
+  const id=$("vu-package-tab-target").value,items=packageEntries.filter(x=>x.quantity>0&&validPrice(x.price));
+  if(!id){$("vu-package-tab-status").textContent="Choose a customer tab first.";return;}
+  if(!items.length){$("vu-package-tab-status").textContent="Select at least one priced package item.";return;}
+  for(const item of items)send("add",{id,item:{name:item.name,quantity:item.quantity,price:item.price}});
+  $("vu-package-tab-status").textContent="Adding "+items.length+" item(s) to customer tab…";
+ };
  document.dispatchEvent(new Event("vu:tab-ready"));
 })();

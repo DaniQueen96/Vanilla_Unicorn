@@ -263,3 +263,9 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 .vu-tab-add{display:grid;grid-template-columns:minmax(130px,1fr) 80px 105px auto;gap:8px;margin:18px 0}
 .vu-tab-add input,.vu-tab-add select{min-width:0}.vu-tab-add button{width:auto}
 @media(max-width:760px){.vu-tab-layout{grid-template-columns:1fr}.vu-tab-add{grid-template-columns:1fr 1fr}.vu-tab-add select{grid-column:1/-1}}
+
+.vu-waste-search{display:block;margin:12px 0}.vu-waste-search input{width:100%}
+.vu-waste-quick{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 16px}
+.vu-waste-quick-button{width:auto!important;padding:7px 11px!important;font-size:.85rem}
+.vu-package-send{display:flex;align-items:end;flex-wrap:wrap;gap:12px;margin:18px 0}
+.vu-package-send label{flex:1;min-width:200px}.vu-package-send button{width:auto}
