@@ -46,7 +46,7 @@ function pkgTotals(){
 }
 function updatePackageTotals(){
  if(!$("package-total"))return;
- const t=pkgTotals(),guests=Math.max(1,pkgNum("vu-plan-guests")),budget=pkgNum("vu-plan-budget");
+ pkgShowStaffSuggestion();const t=pkgTotals(),guests=Math.max(1,pkgNum("vu-plan-guests")),budget=pkgNum("vu-plan-budget");
  const set=(id,v)=>{if($(id))$(id).textContent=v};
  set("package-total",cash(t.total));set("vu-plan-subtotal",cash(t.subtotal));set("vu-plan-savings","−"+cash(t.subtotal*t.discount/100));set("vu-plan-per-guest",cash(t.total/guests));set("vu-plan-discount-label",t.discount+"%");
  set("vu-pkg-known-costs",cash(t.known));set("vu-pkg-profit",cash(t.profit));set("vu-pkg-margin",t.total?(100*t.profit/t.total).toFixed(1)+"%":"—");
@@ -78,7 +78,7 @@ function renderPackageCreator(){
   const pricing=item.kind==="cocktail"?pkgCocktailPrice(item):packagePrice(item),prev=old.get(item.kind+":"+item.id),entry={...item,price:prev?.price??pricing.price,quantity:prev?.quantity||0};packageEntries.push(entry);
   if((item.kind==="service"?"Services":item.kind==="cocktail"?"Cocktails":"Drinks")!==pkgCategory)continue;
   if(search?.value.trim()&&!item.name.toLowerCase().includes(search.value.trim().toLowerCase()))continue;
-  if(selectedOnly?.checked&&!entry.quantity)continue;
+
   const card=el("article","vu-package-card"),top=el("div","vu-package-card-top"),image=el("img","vu-item-icon");image.alt=item.name;image.loading="lazy";pkgApplyImage(image,item);
   const info=el("div","vu-package-info");info.append(el("strong",null,item.name));top.append(image,info);
   const priceRow=el("label","vu-package-price-row","Quote price ($)"),priceInput=el("input");priceInput.type="number";priceInput.min="0";priceInput.step="0.01";priceInput.value=validPrice(entry.price)?String(entry.price):"";priceInput.setAttribute("aria-label",item.name+" price");
@@ -89,12 +89,32 @@ function renderPackageCreator(){
   const set=n=>{entry.quantity=Math.max(0,Math.min(100,n));sync()};minus.onclick=()=>set(entry.quantity-1);plus.onclick=()=>set(entry.quantity+1);slider.oninput=()=>set(Number(slider.value));
   priceRow.append(priceInput);control.append(minus,slider,count,plus);card.append(top,priceRow,control);root.append(card);sync();
  }
- updatePackageTotals();
+ updatePackageTotals();pkgUpdateServiceDetails();
 }
-function pkgSnapshot(){return {fields:Object.fromEntries(pkgFields.map(id=>[id,$(id)?.type==="checkbox"?$(id).checked:$(id)?.value])),items:packageEntries.filter(x=>x.quantity>0).map(x=>({id:x.id,kind:x.kind,quantity:x.quantity,price:x.price})),custom:pkgCustom,updatedAt:new Date().toISOString()};}
+function pkgUpdateServiceDetails(){
+ const root=$("vu-pkg-service-fields"),wrap=$("vu-pkg-service-detail");if(!root||!wrap)return;
+ const selected=packageEntries.filter(x=>x.kind==="service"&&x.quantity>0);wrap.hidden=!selected.length;
+ root.replaceChildren();for(const item of selected){
+  const row=el("div","vu-pkg-service-row");row.append(el("strong",null,item.name+" × "+item.quantity));
+  const label=el("label",null,"Service arrangements / requests"),input=el("textarea");input.rows=2;input.placeholder="Timing, location, requirements or special arrangements";
+  const key="vu-pkg-service-note-"+String(item.id).replace(/[^a-z0-9]/gi,"-");input.value=pkgServiceNotes[key]||"";input.oninput=()=>{pkgServiceNotes[key]=input.value};label.append(input);row.append(label);root.append(row);
+ }
+}
+let pkgServiceNotes={};
+function pkgStaffSuggestion(){
+ const services=packageEntries.filter(x=>x.kind==="service"&&x.quantity>0);
+ const has=s=>services.reduce((n,x)=>n+(x.name.toLowerCase().includes(s)?x.quantity:0),0);
+ const van=$("vu-pkg-van-enabled")?.checked,limo=$("vu-pkg-limo-enabled")?.checked;
+ return { "vu-pkg-bartenders":van?1:0,"vu-pkg-dancers":has("dancer"),"vu-pkg-djs":has("dj"),"vu-pkg-security":has("venue")?1:0,"vu-pkg-drivers":limo?1:0 };
+}
+function pkgShowStaffSuggestion(){
+ const elmt=$("vu-pkg-staff-suggestion");if(!elmt)return;
+ const s=pkgStaffSuggestion();elmt.textContent="Suggested: "+Object.entries(s).map(([id,n])=>id.replace("vu-pkg-","")+": "+n).join(" · ")+". Adjust for your event.";
+}
+function pkgSnapshot(){return {fields:Object.fromEntries(pkgFields.map(id=>[id,$(id)?.type==="checkbox"?$(id).checked:$(id)?.value])),items:packageEntries.filter(x=>x.quantity>0).map(x=>({id:x.id,kind:x.kind,quantity:x.quantity,price:x.price})),custom:pkgCustom,serviceNotes:pkgServiceNotes,updatedAt:new Date().toISOString()};}
 function pkgLoad(d){
  const fields=d.fields||{};for(const id of pkgFields){const input=$(id);if(!input)continue;if(input.type==="checkbox")input.checked=Boolean(fields[id]);else if(fields[id]!=null)input.value=fields[id];}
- pkgCustom=Array.isArray(d.custom)?d.custom:[];const map=new Map((d.items||[]).map(x=>[x.kind+":"+x.id,x]));for(const x of packageEntries){const saved=map.get(x.kind+":"+x.id);x.quantity=saved?.quantity||0;if(saved)x.price=saved.price;}
+ pkgCustom=Array.isArray(d.custom)?d.custom:[];pkgServiceNotes=d.serviceNotes||{};const map=new Map((d.items||[]).map(x=>[x.kind+":"+x.id,x]));for(const x of packageEntries){const saved=map.get(x.kind+":"+x.id);x.quantity=saved?.quantity||0;if(saved)x.price=saved.price;}
  renderPackageCreator();pkgRenderCustom();updatePackageTotals();
 }
 function pkgRenderCustom(){
@@ -106,6 +126,9 @@ function pkgSetStep(step){
  const steps=["plan","build","price","organise","confirm"],index=steps.indexOf(step);$("vu-pkg-back").disabled=index===0;$("vu-pkg-next").hidden=index===steps.length-1;
 }
 function setupPackagePlanner(){
+ const apply=$("vu-pkg-apply-staff");if(apply)apply.onclick=()=>{for(const [id,n] of Object.entries(pkgStaffSuggestion()))if($(id))$(id).value=n;updatePackageTotals()};
+ const cocktail=$("vu-pkg-van-cocktail");if(cocktail){for(const item of data.recipes)cocktail.append(new Option(item.name,item.name));cocktail.onchange=()=>{const item=data.recipes.find(x=>x.name===cocktail.value);if(!item)return;$("vu-pkg-custom-name").value=item.name;const p=pkgCocktailPrice(item);if(validPrice(p.price))$("vu-pkg-custom-price").value=p.price;};}
+
  if(!$("vu-pkg-save"))return;
  const steps=["plan","build","price","organise","confirm"];
  document.querySelectorAll("[data-pkg-step]").forEach(b=>b.onclick=()=>pkgSetStep(b.dataset.pkgStep));
