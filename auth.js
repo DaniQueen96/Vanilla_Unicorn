@@ -79,6 +79,11 @@ document.addEventListener("vu:save-price",async event=>{
  }catch(error){if(status)status.textContent="Save failed: "+error.message;}
 });
 
+
+const packageImagesDoc=doc(db,"businessSettings","packageImages");let stopPackageImages=null;
+function beginPackageImageSync(){if(stopPackageImages)return;stopPackageImages=onSnapshot(packageImagesDoc,s=>document.dispatchEvent(new CustomEvent("vu:package-images-updated",{detail:s.exists()?(s.data().images||{}):{}})),e=>document.dispatchEvent(new CustomEvent("vu:package-image-error",{detail:e.message})))}
+document.addEventListener("vu:package-media-ready",beginPackageImageSync);
+document.addEventListener("vu:package-image-save",async e=>{if(auth.currentUser?.uid!==OWNER_UID)return;const {key,url}=e.detail||{};if(!key||typeof url!=="string"||(url&&!/^https:\/\//i.test(url)))return;try{await setDoc(packageImagesDoc,{images:{[key]:url}},{merge:true});document.dispatchEvent(new Event("vu:package-image-saved"))}catch(error){document.dispatchEvent(new CustomEvent("vu:package-image-error",{detail:error.message}))}});
 const packageCollection=collection(db,"packagePlans");let packagePlans=[],stopPackagePlans=null;
 function beginPackageSync(){if(stopPackagePlans)return;stopPackagePlans=onSnapshot(packageCollection,s=>{packagePlans=s.docs.map(d=>({id:d.id,...d.data()}));document.dispatchEvent(new CustomEvent("vu:packages-updated",{detail:packagePlans}));},error=>document.dispatchEvent(new CustomEvent("vu:package-error",{detail:error.message})))}
 document.addEventListener("vu:package-ready",()=>{beginPackageSync();document.dispatchEvent(new CustomEvent("vu:packages-updated",{detail:packagePlans}))});
@@ -179,7 +184,7 @@ onAuthStateChanged(auth, (user) => {
   if (owner && !appLoaded) {
     appLoaded = true;
     const script = document.createElement("script");
-    script.src = "app.js?v=20261106-package-overhaul1";
+    script.src = "app.js?v=20261106-package-compact2";
     document.body.append(script);
   }
   if (user && !owner) signOut(auth);

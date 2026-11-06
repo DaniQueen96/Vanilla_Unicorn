@@ -7,6 +7,28 @@ function packagePrice(item){
  if(Object.hasOwn(packageBaseCosts,id))return {price:Math.ceil((packageBaseCosts[id]/0.7)/5)*5,estimated:true};
  return {price:null,estimated:false};
 }
+
+let packageImages={};
+function pkgImageKey(item){return item.kind+":"+item.id}
+function pkgImageFor(item){return packageImages[pkgImageKey(item)]||""}
+function pkgApplyImage(img,item){
+ const custom=pkgImageFor(item);img.src=custom||"assets/vu-unicorn.svg";img.classList.toggle("vu-pkg-photo-placeholder",!custom);
+ img.onerror=()=>{img.onerror=null;img.src="assets/vu-unicorn.svg";img.classList.add("vu-pkg-photo-placeholder")};
+}
+function setupPackageMedia(){
+ const select=$("vu-media-item");if(!select)return;
+ const items=[...data.drinks.map(x=>({...x,kind:"drink"})),...data.services.map(x=>({...x,kind:"service"})),{id:"mobile-bar",name:"Mobile cocktail bar van",kind:"feature"},{id:"limo-hire",name:"Limousine hire",kind:"feature"}];
+ select.replaceChildren(new Option("Choose an item",""));for(const x of items)select.append(new Option(x.name,pkgImageKey(x)));
+ const preview=()=>{const url=$("vu-media-url").value.trim(),img=$("vu-media-preview");img.src=url||"assets/vu-unicorn.svg";$("vu-media-placeholder").hidden=!!url;img.onerror=()=>{img.onerror=null;img.src="assets/vu-unicorn.svg";$("vu-media-placeholder").hidden=false}};
+ select.onchange=()=>{$("vu-media-url").value=packageImages[select.value]||"";preview()};
+ $("vu-media-url").oninput=preview;
+ $("vu-media-save").onclick=()=>{if(!select.value){$("vu-media-status").textContent="Choose an item first.";return}const url=$("vu-media-url").value.trim();if(url&&!/^https:\/\//i.test(url)){$("vu-media-status").textContent="Paste a valid HTTPS image URL.";return}document.dispatchEvent(new CustomEvent("vu:package-image-save",{detail:{key:select.value,url}}));$("vu-media-status").textContent="Saving…"};
+ $("vu-media-clear").onclick=()=>{$("vu-media-url").value="";preview();$("vu-media-save").click()};
+ document.addEventListener("vu:package-images-updated",e=>{packageImages=e.detail||{};if(select.value){$("vu-media-url").value=packageImages[select.value]||"";preview()}renderPackageCreator();});
+ document.addEventListener("vu:package-image-saved",()=>{$("vu-media-status").textContent="Image saved for all devices."});
+ document.addEventListener("vu:package-image-error",e=>{$("vu-media-status").textContent="Could not save: "+e.detail});
+ document.dispatchEvent(new Event("vu:package-media-ready"));
+}
 let pkgCategory="Drinks",pkgCustom=[],pkgDraftId=null,pkgDrafts=[],pkgStep="plan";
 const pkgFields=["vu-plan-name","vu-plan-customer","vu-pkg-occasion","vu-plan-guests","vu-pkg-start","vu-pkg-end","vu-pkg-location","vu-plan-budget","vu-pkg-requests","vu-plan-discount","vu-pkg-van-enabled","vu-pkg-van-fee","vu-pkg-van-hours","vu-pkg-van-cost","vu-pkg-van-expenses","vu-pkg-limo-enabled","vu-pkg-limo-fee","vu-pkg-limo-hours","vu-pkg-limo-expenses","vu-pkg-extra-cost","vu-pkg-adjustment","vu-pkg-bartenders","vu-pkg-dancers","vu-pkg-djs","vu-pkg-security","vu-pkg-drivers","vu-pkg-status","vu-pkg-itinerary","vu-pkg-checklist"];
 const pkgNum=id=>Number($(id)?.value||0)||0;
@@ -45,7 +67,7 @@ function renderPackageCreator(){
  for(const item of items){
   const pricing=packagePrice(item),prev=old.get(item.kind+":"+item.id),entry={...item,price:prev?.price??pricing.price,quantity:prev?.quantity||0};packageEntries.push(entry);
   if((item.kind==="service"?"Services":"Drinks")!==pkgCategory)continue;
-  const card=el("article","vu-package-card"),top=el("div","vu-package-card-top"),image=el("img","vu-item-icon");image.alt="";image.loading="lazy";image.src="https://p17.admin.opfw.me/images/icons/items/"+encodeURIComponent(item.id.replace(/-/g,"_"))+".png";image.onerror=()=>{image.onerror=null;image.src="assets/vu-unicorn.svg"};
+  const card=el("article","vu-package-card"),top=el("div","vu-package-card-top"),image=el("img","vu-item-icon");image.alt="";image.loading="lazy";pkgApplyImage(image,item);
   const info=el("div","vu-package-info");info.append(el("strong",null,item.name));top.append(image,info);
   const priceRow=el("label","vu-package-price-row","Quote price ($)"),priceInput=el("input");priceInput.type="number";priceInput.min="0";priceInput.step="0.01";priceInput.value=validPrice(entry.price)?String(entry.price):"";priceInput.setAttribute("aria-label",item.name+" price");
   const control=el("div","vu-package-control"),minus=el("button",null,"−"),plus=el("button",null,"+"),slider=el("input"),count=el("strong",null,String(entry.quantity));
@@ -126,7 +148,7 @@ function setupMonthCalendar(){
  $("vu-calendar-next").onclick=()=>{cursor.setMonth(cursor.getMonth()+1);paint();};
  paint();
 }
-function render(){for(let x of data.drinks){line($("drink-list"),x.name,x.price,"d-"+x.id)}renderPackageCreator();setupPackagePlanner();if(!data.recipes.length)data.recipes=[{"name":"Whiskey Sour","ingredients":[{"name":"Lemon","quantity":1},{"name":"Whiskey","quantity":1},{"name":"Eggs","quantity":1},{"name":"Sugar","quantity":1}]},{"name":"Piña Colada","ingredients":[{"name":"Rum","quantity":1},{"name":"Pineapple","quantity":1},{"name":"Coconut","quantity":1}]},{"name":"Bloody Mary","ingredients":[{"name":"Lemon","quantity":1},{"name":"Chili Peppers","quantity":1},{"name":"Salt","quantity":1},{"name":"Vodka","quantity":1},{"name":"Tomato Juice","quantity":1}]},{"name":"Shirley Temple","ingredients":[{"name":"Sprunk","quantity":1},{"name":"Cherry","quantity":1},{"name":"Grenadine","quantity":1}]},{"name":"Rainbow Rush","ingredients":[{"name":"Sprunk","quantity":1},{"name":"Skittles","quantity":1},{"name":"Vodka","quantity":1}]},{"name":"Mojito","ingredients":[{"name":"Sprunk","quantity":1},{"name":"Sugar","quantity":1},{"name":"Lime","quantity":1},{"name":"Rum","quantity":1},{"name":"Mint Leaves","quantity":1}]},{"name":"Old Fashioned","ingredients":[{"name":"Whiskey","quantity":1},{"name":"Orange","quantity":1},{"name":"Sugar","quantity":1},{"name":"Angostura Bitters","quantity":1}]},{"name":"Margarita","ingredients":[{"name":"Lime","quantity":1},{"name":"Tequila","quantity":1},{"name":"Orange","quantity":1},{"name":"Sugar","quantity":1}]},{"name":"Salty Pigeon","ingredients":[{"name":"Pigeon Milk","quantity":1},{"name":"Vodka","quantity":1},{"name":"Cocoa Powder","quantity":1},{"name":"Salt","quantity":1}]},{"name":"Virgin Mojito","ingredients":[{"name":"Sprunk","quantity":1},{"name":"Sugar","quantity":1},{"name":"Lime","quantity":1},{"name":"Mint Leaves","quantity":1}]}];for(const r of data.recipes){
+function render(){for(let x of data.drinks){line($("drink-list"),x.name,x.price,"d-"+x.id)}renderPackageCreator();setupPackageMedia();setupPackagePlanner();if(!data.recipes.length)data.recipes=[{"name":"Whiskey Sour","ingredients":[{"name":"Lemon","quantity":1},{"name":"Whiskey","quantity":1},{"name":"Eggs","quantity":1},{"name":"Sugar","quantity":1}]},{"name":"Piña Colada","ingredients":[{"name":"Rum","quantity":1},{"name":"Pineapple","quantity":1},{"name":"Coconut","quantity":1}]},{"name":"Bloody Mary","ingredients":[{"name":"Lemon","quantity":1},{"name":"Chili Peppers","quantity":1},{"name":"Salt","quantity":1},{"name":"Vodka","quantity":1},{"name":"Tomato Juice","quantity":1}]},{"name":"Shirley Temple","ingredients":[{"name":"Sprunk","quantity":1},{"name":"Cherry","quantity":1},{"name":"Grenadine","quantity":1}]},{"name":"Rainbow Rush","ingredients":[{"name":"Sprunk","quantity":1},{"name":"Skittles","quantity":1},{"name":"Vodka","quantity":1}]},{"name":"Mojito","ingredients":[{"name":"Sprunk","quantity":1},{"name":"Sugar","quantity":1},{"name":"Lime","quantity":1},{"name":"Rum","quantity":1},{"name":"Mint Leaves","quantity":1}]},{"name":"Old Fashioned","ingredients":[{"name":"Whiskey","quantity":1},{"name":"Orange","quantity":1},{"name":"Sugar","quantity":1},{"name":"Angostura Bitters","quantity":1}]},{"name":"Margarita","ingredients":[{"name":"Lime","quantity":1},{"name":"Tequila","quantity":1},{"name":"Orange","quantity":1},{"name":"Sugar","quantity":1}]},{"name":"Salty Pigeon","ingredients":[{"name":"Pigeon Milk","quantity":1},{"name":"Vodka","quantity":1},{"name":"Cocoa Powder","quantity":1},{"name":"Salt","quantity":1}]},{"name":"Virgin Mojito","ingredients":[{"name":"Sprunk","quantity":1},{"name":"Sugar","quantity":1},{"name":"Lime","quantity":1},{"name":"Mint Leaves","quantity":1}]}];for(const r of data.recipes){
  const card=el("article","vu-recipe-card");
  const visual=el("div","vu-recipe-visual");
  const img=el("img","vu-recipe-image");img.alt=r.name+" cocktail";img.loading="lazy";
