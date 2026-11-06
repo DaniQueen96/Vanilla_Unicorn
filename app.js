@@ -169,7 +169,7 @@ function render(){for(let x of data.drinks){line($("drink-list"),x.name,x.price,
 // Main navigation and nested settings sections.
 (function(){
  const primary=["overview","recipes","transactions","packages","tips","calendar","settings"];
- const nested=["staff","costing","pricing","drinks","limo","events","incidents"];
+ const nested=["staff","costing","pricing","drinks","limo","events","package-media","incidents"];
  const settingsContent=document.getElementById("settings-content");
  nested.forEach(id=>{const node=document.getElementById(id);if(node){node.classList.add("settings-panel");settingsContent.append(node);}});
  const nav=[...document.querySelectorAll("nav [data-tab]")];
