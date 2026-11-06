@@ -71,16 +71,19 @@ function renderPackageCreator(){
  const old=new Map(packageEntries.map(x=>[x.kind+":"+x.id,x]));root.replaceChildren();packageEntries=[];
  const items=[...data.recipes.map(x=>({...x,id:x.id||x.name,kind:"cocktail"})),...data.drinks.map(x=>({...x,kind:"drink"})),...data.services.map(x=>({...x,kind:"service"}))];
  const categories=["Cocktails","Drinks","Services"];const tabs=$("vu-pkg-category-tabs");tabs.replaceChildren();
+ const search=$("vu-pkg-search"),selectedOnly=$("vu-pkg-selected-only");if(search&&!search.dataset.wired){search.dataset.wired="1";search.addEventListener("input",()=>renderPackageCreator())}if(selectedOnly&&!selectedOnly.dataset.wired){selectedOnly.dataset.wired="1";selectedOnly.addEventListener("change",()=>renderPackageCreator())}
  for(const cat of categories){const b=el("button",cat===pkgCategory?"active":"",cat);b.type="button";b.onclick=()=>{pkgCategory=cat;renderPackageCreator()};tabs.append(b);}
  for(const item of items){
   const pricing=item.kind==="cocktail"?pkgCocktailPrice(item):packagePrice(item),prev=old.get(item.kind+":"+item.id),entry={...item,price:prev?.price??pricing.price,quantity:prev?.quantity||0};packageEntries.push(entry);
   if((item.kind==="service"?"Services":item.kind==="cocktail"?"Cocktails":"Drinks")!==pkgCategory)continue;
+  if(search?.value.trim()&&!item.name.toLowerCase().includes(search.value.trim().toLowerCase()))continue;
+  if(selectedOnly?.checked&&!entry.quantity)continue;
   const card=el("article","vu-package-card"),top=el("div","vu-package-card-top"),image=el("img","vu-item-icon");image.alt=item.name;image.loading="lazy";pkgApplyImage(image,item);
   const info=el("div","vu-package-info");info.append(el("strong",null,item.name));top.append(image,info);
   const priceRow=el("label","vu-package-price-row","Quote price ($)"),priceInput=el("input");priceInput.type="number";priceInput.min="0";priceInput.step="0.01";priceInput.value=validPrice(entry.price)?String(entry.price):"";priceInput.setAttribute("aria-label",item.name+" price");
   const control=el("div","vu-package-control"),minus=el("button",null,"−"),plus=el("button",null,"+"),slider=el("input"),count=el("strong",null,String(entry.quantity));
   minus.type=plus.type="button";slider.type="range";slider.min="0";slider.max="100";slider.step="1";slider.value=String(entry.quantity);
-  const sync=()=>{slider.disabled=!validPrice(entry.price);minus.disabled=plus.disabled=slider.disabled;slider.value=String(entry.quantity);count.textContent=String(entry.quantity);updatePackageTotals();};
+  const sync=()=>{card.classList.toggle("vu-pkg-picked",entry.quantity>0);slider.disabled=!validPrice(entry.price);minus.disabled=plus.disabled=slider.disabled;slider.value=String(entry.quantity);count.textContent=String(entry.quantity);updatePackageTotals();};
   priceInput.oninput=()=>{entry.price=priceInput.value===""?null:Number(priceInput.value);if(!validPrice(entry.price))entry.quantity=0;sync();};
   const set=n=>{entry.quantity=Math.max(0,Math.min(100,n));sync()};minus.onclick=()=>set(entry.quantity-1);plus.onclick=()=>set(entry.quantity+1);slider.oninput=()=>set(Number(slider.value));
   priceRow.append(priceInput);control.append(minus,slider,count,plus);card.append(top,priceRow,control);root.append(card);sync();
