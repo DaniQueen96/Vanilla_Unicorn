@@ -17,10 +17,9 @@ document.addEventListener("vu:costing-updated",e=>{liveCosting=e.detail||null;if
 
 function packagePrice(item){
  const id=String(item.id||"").toLowerCase(),name=String(item.name||"").toLowerCase().replace(/[^a-z0-9]+/g,"");
- const matches=Object.entries(sharedSellingPrices).filter(([key,value])=>value!==null&&Number.isFinite(Number(value))&&Number(value)>=0&&!key.startsWith("__")&&(key.toLowerCase().endsWith("::"+id)||key.toLowerCase().replace(/[^a-z0-9]/g,"").endsWith(name)));
+ const matches=Object.entries(sharedSellingPrices).filter(([key,value])=>value!==null&&Number.isFinite(Number(value))&&Number(value)>=0&&!key.startsWith("__")&&key.split("::").slice(1).join("::").toLowerCase()===id);
  if(matches.length)return {price:Number(matches[0][1]),estimated:false};
  if(validPrice(item.price))return {price:item.price,estimated:false};
- const cost=liveUnitCost(item);if(cost!==null){const margin=Math.min(90,Math.max(0,Number(sharedSellingPrices.__defaultMargin??30)));return {price:Math.ceil(cost/(1-margin/100)/5)*5,estimated:true};}
  return {price:null,estimated:false};
 }
 
@@ -99,10 +98,9 @@ function updatePackageTotals(){
 let pkgRecipeUnitCost=null;
 function pkgCocktailPrice(item){
  const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
- const match=Object.entries(sharedSellingPrices).find(([key,v])=>key.startsWith("Cocktails::")&&v!==null&&Number.isFinite(Number(v))&&norm(key.split("::").slice(1).join("::"))===norm(item.name));
+ const match=Object.entries(sharedSellingPrices).find(([key,v])=>key==="Cocktails::"+item.id&&v!==null&&Number.isFinite(Number(v))&&Number(v)>=0);
  if(match)return {price:Number(match[1]),estimated:false};
- const cost=liveUnitCost(item),margin=Number(sharedSellingPrices.__defaultMargin??30);
- return {price:cost===null||!Number.isFinite(cost)?null:Math.ceil(cost/(1-Math.min(90,Math.max(0,margin))/100)/5)*5,estimated:true};
+ return {price:null,estimated:false};
 }
 function renderPackageCreator(){
  const root=$("package-options");if(!root)return;
@@ -471,7 +469,7 @@ function setupOrderCalculator(data){
  pkgRecipeUnitCost=unitCost;
  const marginFor=e=>Number(saved["__margin::"+e.key]??saved["__defaultMargin"]??30);
  const suggestedFor=e=>{const cost=unitCost(e.item),m=marginFor(e);return cost===null||m<10||m>90?null:Math.ceil((cost/(1-m/100))/5)*5;};
- let pricesLoaded=false,costsLoaded=true,seeded=new Set();
+ let pricesLoaded=false,costsLoaded=false,seeded=new Set();
  const seedSuggested=()=>{
   if(!pricesLoaded||!costsLoaded||!costing?.recipes?.length)return;
   const updates={};
@@ -479,10 +477,9 @@ function setupOrderCalculator(data){
    if(e.group!=="Cocktails"||(Object.hasOwn(saved,e.key)&&saved[e.key]!==null)||seeded.has(e.key))continue;
    const amount=suggestedFor(e);
    if(amount===null)continue;
-   updates[e.key]=amount;seeded.add(e.key);
-   e.price.value=String(amount);saved[e.key]=amount;
+   seeded.add(e.key);
   }
-  if(Object.keys(updates).length)document.dispatchEvent(new CustomEvent("vu:seed-prices",{detail:updates}));
+  // Suggestions are advisory only; never write calculated prices without staff approval.
   calculate();
  };
  const clearOrder=()=>{entries.forEach(e=>e.qty=0);root.querySelectorAll(".vu-qty-value").forEach(e=>e.textContent="0");calculate();};
@@ -574,7 +571,7 @@ function setupOrderCalculator(data){
   const special=saved["__specialActive::"+e.key]===1||saved["__specialActive::"+e.key]===true;
   const sp=saved["__special::"+e.key];
   if(special&&sp!==null&&sp!==undefined&&Number.isFinite(Number(sp))&&Number(sp)>=0)return Number(sp);
-  return e.price.value===""?(suggestedFor(e)??NaN):Number(e.price.value);
+  return e.price.value===""?NaN:Number(e.price.value);
  }
  function lines(){return entries.filter(e=>e.qty>0);}
  function calculate(){
