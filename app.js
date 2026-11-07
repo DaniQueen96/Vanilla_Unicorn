@@ -428,7 +428,7 @@ function setupWasteCalculator(recipes){
 
 function setupOrderCalculator(data){
  const root=document.getElementById("order-categories"),tabs=document.getElementById("order-tabs"),pricing=document.getElementById("pricing-categories"),priceTabs=document.getElementById("pricing-tabs");
- if(!root||!tabs||!pricing||!priceTabs){if(root)root.textContent="Bar menu cannot load: required page controls are missing.";console.error("VU till missing controls",{root:!!root,tabs:!!tabs,pricing:!!pricing,priceTabs:!!priceTabs});return;} if(root.dataset.initialized==="true")return;root.dataset.initialized="true";
+ if(!root||!tabs||!pricing||!priceTabs){if(root)root.textContent="Bar menu cannot load: required page controls are missing.";console.error("VU till missing controls",{root:!!root,tabs:!!tabs,pricing:!!pricing,priceTabs:!!priceTabs});return;} if(root.dataset.initialized==="true")return;
  const $id=id=>document.getElementById(id);
  const money=n=>"$"+Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
  const iconId=item=>String(item.id||item.name).toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"").replace("pi_a_colada","pina_colada");
@@ -629,7 +629,7 @@ function setupOrderCalculator(data){
   seedSuggested();
  });
  document.addEventListener("vu:costing-updated",event=>{if(event.detail?.recipes?.length){costing=event.detail;costsLoaded=true;seedSuggested();}else calculate();});
- setActive(active,false);setActive(pricingActive,true);calculate();document.dispatchEvent(new Event("vu:pricing-ready"));
+ setActive(active,false);setActive(pricingActive,true);calculate();root.dataset.initialized="true";document.dispatchEvent(new Event("vu:pricing-ready"));
 }
 
 (function customerTabs(){
