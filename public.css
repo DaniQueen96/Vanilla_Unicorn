@@ -107,3 +107,13 @@
 .vu-copy-status{display:block;margin-top:12px;font-size:12px;color:var(--cyan)}
 @media(max-width:850px){.vu-service-grid,.vu-contact-grid{grid-template-columns:1fr}.vu-service-card{min-height:0}.vu-service-cta{align-items:flex-start;flex-direction:column}}
 @media(max-width:560px){.hero .vu-neon-title{font-size:clamp(44px,11.5vw,65px)}.hero .vu-hero-tagline{font-size:26px}.vu-service-card{padding:21px;gap:15px}.vu-service-icon{width:42px;height:42px;font-size:23px}.vu-contact-main,.vu-contact-details{padding:22px}}
+
+/* Compact gallery captions with optional marketing details for bookable spaces. */
+.vu-gallery-tile{display:flex;flex-direction:column;text-align:left}
+.vu-gallery-tile img{height:220px;flex:none}
+.vu-gallery-tile>span:not(.vu-gallery-hire){font-size:13px!important;font-weight:650!important;line-height:1.35;padding:10px 13px 4px!important}
+.vu-gallery-tile .vu-gallery-description{display:block;color:#d8c3d5;font-size:12px;line-height:1.55;padding:4px 13px 12px;text-align:left}
+.vu-gallery-tile .vu-gallery-hire{display:block;margin-top:auto;padding:9px 13px 12px;color:#ff8dd0;font-size:11px;font-weight:700;text-align:left}
+.vu-gallery-tile[hidden]{display:none!important}
+.vu-gallery-grid{align-items:stretch}
+@media(max-width:600px){.vu-gallery-tile img{height:210px}}
