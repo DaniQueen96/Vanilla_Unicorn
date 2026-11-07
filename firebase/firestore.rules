@@ -9,6 +9,15 @@ service cloud.firestore {
      && request.resource.data.prices is map;
   }
   match /staffProfiles/{id} { allow read, write: if owner(); }
+  match /staffAccounts/{uid} {
+   allow get: if owner() || (request.auth != null && request.auth.uid == uid);
+   allow list, create, delete: if owner();
+   allow update: if owner() || (request.auth != null && request.auth.uid == uid
+     && resource.data.status == 'active'
+     && resource.data.mustChangePassword == true
+     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['mustChangePassword'])
+     && request.resource.data.mustChangePassword == false);
+  }
   match /publicEvents/{id} {
    allow read: if request.auth != null;
    allow create, update, delete: if owner();

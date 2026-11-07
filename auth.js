@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, updatePassword } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
 // Firebase web app identifiers are public; passwords and admin credentials are never stored here.
 const firebaseConfig = {
@@ -139,17 +139,11 @@ document.getElementById("login-form").addEventListener("submit", async (event) =
   event.preventDefault();
   const username = document.getElementById("login-username").value.trim().toLowerCase();
   const password = document.getElementById("login-password").value;
-  if (username !== "vu-owner") {
-    status.textContent = "This account is not enabled yet.";
-    return;
-  }
+  if (!/^[a-z0-9_-]{3,32}$/.test(username)) { status.textContent="Invalid VU username."; return; }
   status.textContent = "Signing in…";
   try {
-    const result = await signInWithEmailAndPassword(auth, OWNER_EMAIL, password);
-    if (result.user.uid !== OWNER_UID) {
-      await signOut(auth);
-      throw new Error("This account is not authorised as the owner.");
-    }
+    const result = await signInWithEmailAndPassword(auth, username==="vu-owner"?OWNER_EMAIL:username+"@staff.vu", password);
+
   } catch (error) {
     status.textContent = error.code === "auth/invalid-credential" ? "Incorrect password or account details." : (error.message || "Unable to sign in.");
   }
@@ -157,9 +151,11 @@ document.getElementById("login-form").addEventListener("submit", async (event) =
 });
 
 logout.addEventListener("click", () => signOut(auth));
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   const owner = user?.uid === OWNER_UID;
-  screen.classList.toggle("hidden", owner);
+  screen.classList.toggle("hidden", !!user);
+  document.getElementById("staff-onboarding").classList.add("hidden");
+  document.getElementById("staff-portal").classList.add("hidden");
   app.classList.toggle("hidden", !owner);
   logout.classList.toggle("hidden", !owner);
   document.getElementById("signed-in-label").textContent = owner ? "VU Owner" : "Drinks · Events · Bookings";
@@ -187,13 +183,35 @@ onAuthStateChanged(auth, (user) => {
     script.src = "app.js?v=20261107-pkg10";
     document.body.append(script);
   }
-  if (user && !owner) signOut(auth);
+  if(user&&!owner){
+    try{
+      const snap=await getDoc(doc(db,"staffAccounts",user.uid));
+      const staff=snap.exists()?snap.data():null;
+      if(!staff||staff.status!=="active"){await signOut(auth);status.textContent="Account not activated. Contact the VU owner.";return;}
+      if(auth.currentUser?.uid!==user.uid)return;
+      logout.classList.remove("hidden");
+      document.getElementById("signed-in-label").textContent=staff.username||"VU Staff";
+      if(staff.mustChangePassword)document.getElementById("staff-onboarding").classList.remove("hidden");
+      else{
+        document.getElementById("staff-portal").classList.remove("hidden");
+        document.getElementById("staff-welcome").textContent="Welcome, "+(staff.name||staff.username);
+        document.getElementById("staff-portal-permissions").textContent="Assigned sections: "+(staff.access||[]).join(", ");
+      }
+    }catch(error){await signOut(auth);status.textContent="Staff access verification failed.";}
+  }
   if (!owner) status.textContent = "";
 }, (error) => {
   status.textContent = "Could not connect to Firebase. Check the Firebase configuration.";
   console.error("Authentication state error:", error);
 });
 
+document.getElementById("staff-password-form").addEventListener("submit",async event=>{
+ event.preventDefault();
+ const password=document.getElementById("staff-new-password").value,confirmPassword=document.getElementById("staff-confirm-password").value,message=document.getElementById("staff-password-message");
+ if(password.length<12||password!==confirmPassword){message.textContent="Passwords must match and be at least 12 characters.";return;}
+ try{await updatePassword(auth.currentUser,password);await setDoc(doc(db,"staffAccounts",auth.currentUser.uid),{mustChangePassword:false},{merge:true});message.textContent="Password changed. Sign in again.";await signOut(auth);}
+ catch(error){message.textContent="Could not update password: "+error.message;}
+});
 function setupStaffManagement() {
   const list = document.getElementById("staff-list");
   const message = document.getElementById("staff-message");
@@ -221,7 +239,16 @@ function setupStaffManagement() {
         try { await deleteDoc(doc(db, "staffProfiles", employee.id)); }
         catch (e) { message.textContent = "Could not remove employee: " + e.message; }
       });
-      row.append(details, remove); list.append(row);
+      const toggle=document.createElement("button");toggle.type="button";toggle.textContent=employee.status==="active"?"Suspend":"Activate";
+      toggle.onclick=async()=>{
+        if(!employee.authUid){message.textContent="Link the employee Firebase UID first.";return;}
+        const next=employee.status==="active"?"suspended":"active";
+        try{
+          await setDoc(doc(db,"staffAccounts",employee.authUid),{name:employee.name,username:employee.username,roles:employee.roles||[],access:employee.access||[],status:next,...(employee.status==="pending"?{mustChangePassword:true}:{})},{merge:true});
+          await setDoc(doc(db,"staffProfiles",employee.id),{status:next},{merge:true});
+        }catch(error){message.textContent=error.message;}
+      };
+      row.append(details,toggle,remove);list.append(row);
     }
   }, (error) => {
     list.textContent = "Unable to load staff records. Check your Firestore rules.";
@@ -242,8 +269,11 @@ function setupStaffManagement() {
     if (username.toLowerCase() === "vu-owner" || employees.some(e => e.username.toLowerCase() === username.toLowerCase())) {
       message.textContent = "That username is already reserved or in use."; return;
     }
+    const authUid=document.getElementById("staff-auth-uid").value.trim();
+    if(authUid&&!/^[a-zA-Z0-9]{20,128}$/.test(authUid)){message.textContent="Invalid Firebase UID.";return;}
+    if(authUid&&employees.some(e=>e.authUid===authUid)){message.textContent="UID already linked.";return;}
     try {
-      await addDoc(collection(db, "staffProfiles"), { name, username, roles, access, status: "pending", createdAt: serverTimestamp() });
+      await addDoc(collection(db, "staffProfiles"), { name, username, roles, access, authUid, status: "pending", createdAt: serverTimestamp() });
       form.reset(); message.textContent = "Employee profile saved. Login activation is not available yet.";
     } catch (error) { message.textContent = "Could not save: " + error.message; }
   });
