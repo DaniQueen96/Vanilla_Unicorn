@@ -15,10 +15,20 @@ function liveUnitCost(item){
 }
 document.addEventListener("vu:costing-updated",e=>{liveCosting=e.detail||null;if(data.drinks.length)renderPackageCreator();});
 
+function savedCustomerPrice(key){
+ const specialActive=sharedSellingPrices["__specialActive::"+key]===1||sharedSellingPrices["__specialActive::"+key]===true;
+ const special=sharedSellingPrices["__special::"+key];
+ if(specialActive&&special!==null&&special!==undefined&&Number.isFinite(Number(special))&&Number(special)>=0)return Number(special);
+ const value=sharedSellingPrices[key];
+ return value!==null&&value!==undefined&&Number.isFinite(Number(value))&&Number(value)>=0?Number(value):null;
+}
 function packagePrice(item){
- const id=String(item.id||"").toLowerCase(),name=String(item.name||"").toLowerCase().replace(/[^a-z0-9]+/g,"");
- const matches=Object.entries(sharedSellingPrices).filter(([key,value])=>value!==null&&Number.isFinite(Number(value))&&Number(value)>=0&&!key.startsWith("__")&&key.split("::").slice(1).join("::").toLowerCase()===id);
- if(matches.length)return {price:Number(matches[0][1]),estimated:false};
+ const id=String(item.id||"").toLowerCase();
+ const groups=item.kind==="drink"?["Soft Drinks","Beer & Cider","Spirits & Alcohol","Other Drinks","More Drinks"]:item.kind==="food"?["Food & Snacks"]:[];
+ for(const group of groups){
+  const value=savedCustomerPrice(group+"::"+id);
+  if(value!==null)return {price:value,estimated:false};
+ }
  if(validPrice(item.price))return {price:item.price,estimated:false};
  return {price:null,estimated:false};
 }
@@ -98,10 +108,8 @@ function updatePackageTotals(){
 }
 let pkgRecipeUnitCost=null;
 function pkgCocktailPrice(item){
- const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
- const match=Object.entries(sharedSellingPrices).find(([key,v])=>key==="Cocktails::"+item.id&&v!==null&&Number.isFinite(Number(v))&&Number(v)>=0);
- if(match)return {price:Number(match[1]),estimated:false};
- return {price:null,estimated:false};
+ const price=savedCustomerPrice("Cocktails::"+item.id);
+ return {price,estimated:false};
 }
 function renderPackageCreator(){
  const root=$("package-options");if(!root)return;
