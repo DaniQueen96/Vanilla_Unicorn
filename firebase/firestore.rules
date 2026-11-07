@@ -18,7 +18,7 @@ service cloud.firestore {
      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['mustChangePassword'])
      && request.resource.data.mustChangePassword == false);
   }
-  match /publicGallery/{id} { allow read: if request.auth != null; allow create, update, delete: if owner(); }
+  match /publicGallery/{id} { allow read: if true; allow create, update, delete: if owner(); }
   match /publicEvents/{id} {
    allow read: if request.auth != null;
    allow create, update, delete: if owner();
