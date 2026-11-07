@@ -425,12 +425,12 @@ function setupWasteCalculator(recipes){
 
 function setupOrderCalculator(data){
  const root=document.getElementById("order-categories"),tabs=document.getElementById("order-tabs"),pricing=document.getElementById("pricing-categories"),priceTabs=document.getElementById("pricing-tabs");
- if(!root||!tabs||!pricing||!priceTabs)return;
+ if(!root||!tabs||!pricing||!priceTabs){if(root)root.textContent="Bar menu cannot load: required page controls are missing.";console.error("VU till missing controls",{root:!!root,tabs:!!tabs,pricing:!!pricing,priceTabs:!!priceTabs});return;} if(root.dataset.initialized==="true")return;root.dataset.initialized="true";
  const $id=id=>document.getElementById(id);
  const money=n=>"$"+Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
  const iconId=item=>String(item.id||item.name).toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"").replace("pi_a_colada","pina_colada");
  const picture=item=>{const img=el("img","vu-item-icon");img.alt=item.name;img.loading="lazy";img.src="https://p17.admin.opfw.me/images/icons/items/"+encodeURIComponent(iconId(item))+".png";img.onerror=()=>{img.onerror=null;img.src="assets/vu-unicorn.svg";};return img;};
- const recipes=(data.recipes||[]).map(r=>({id:r.id||iconId(r),name:r.name}));
+ root.textContent="Loading bar menu…";const recipes=(data.recipes||[]).map(r=>({id:r.id||iconId(r),name:r.name}));
  const drinks=(data.drinks||[]).map(d=>({id:d.id,name:d.name,price:d.price}));
  const groups=[
   ["Cocktails",recipes],
@@ -504,7 +504,7 @@ function setupOrderCalculator(data){
   [...holder.children].forEach(p=>p.hidden=p.dataset.group!==group);
   [...bar.children].forEach(b=>{const on=b.dataset.group===group;b.classList.toggle("active",on);b.setAttribute("aria-selected",String(on));});
  };
- for(const [group,items] of groups){
+ root.replaceChildren();tabs.replaceChildren();pricing.replaceChildren();priceTabs.replaceChildren();for(const [group,items] of groups){
   const tab=el("button","vu-order-tab",group);tab.type="button";tab.dataset.group=group;tab.setAttribute("role","tab");tab.onclick=()=>setActive(group,false);tabs.append(tab);
   const pt=el("button","vu-order-tab",group);pt.type="button";pt.dataset.group=group;pt.setAttribute("role","tab");pt.onclick=()=>setActive(group,true);priceTabs.append(pt);
   const panel=el("div","vu-order-items");panel.dataset.group=group;root.append(panel);
