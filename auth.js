@@ -186,7 +186,20 @@ onAuthStateChanged(auth, async (user) => {
   app.classList.toggle("hidden", !owner);
   logout.classList.toggle("hidden", !owner);
   document.getElementById("signed-in-label").textContent = owner ? "VU Owner" : "Drinks · Events · Bookings";
-  if (owner) { beginPricingSync(); beginTabSync(); }
+  if (owner && !appLoaded) {
+    appLoaded = true;
+    const script = document.createElement("script");
+    script.type = "module";
+    script.src = "app.js?v=20261107-till-bootstrap23";
+    script.onerror = () => {
+      appLoaded = false;
+      const target = document.getElementById("order-categories");
+      if (target) target.textContent = "Bar Calculator could not load its application script. Refresh the page or contact management.";
+      console.error("VU app.js failed to load");
+    };
+    document.body.append(script);
+  }
+  if (owner) { try { beginPricingSync(); } catch(error) { console.error("VU pricing sync failed",error); } try { beginTabSync(); } catch(error) { console.error("VU tab sync failed",error); } }
   if (!owner && stopTabsListener) {stopTabsListener();stopTabsListener=null;tabCache=[];}
   if (!owner && stopPricingListener) { stopPricingListener(); stopPricingListener=null; sharedPrices={}; }
   if (!owner && stopPricingCostingListener) { stopPricingCostingListener(); stopPricingCostingListener=null; currentCosting=null; }
@@ -203,19 +216,6 @@ onAuthStateChanged(auth, async (user) => {
   if (!owner && stopStaffListener) {
     stopStaffListener(); stopStaffListener = null; staffInitialized = false;
     document.getElementById("staff-list").replaceChildren();
-  }
-  if (owner && !appLoaded) {
-    appLoaded = true;
-    const script = document.createElement("script");
-    script.type = "module";
-    script.src = "app.js?v=20261107-till-bootstrap22";
-    script.onerror = () => {
-      appLoaded = false;
-      const target = document.getElementById("order-categories");
-      if (target) target.textContent = "Bar Calculator could not load its application script. Refresh the page or contact management.";
-      console.error("VU app.js failed to load");
-    };
-    document.body.append(script);
   }
   if(user&&!owner){
     try{
