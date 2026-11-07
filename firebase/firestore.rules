@@ -19,6 +19,7 @@ service cloud.firestore {
      && request.resource.data.mustChangePassword == false);
   }
   match /publicGallery/{id} { allow read: if true; allow create, update, delete: if owner(); }
+  match /vuMemoryAlbums/{id} { allow read: if true; allow create, update, delete: if owner(); }
   match /publicEvents/{id} {
    allow read: if true;
    allow create, update, delete: if owner();
