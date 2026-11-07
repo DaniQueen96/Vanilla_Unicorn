@@ -250,7 +250,7 @@ function setupVehicleManagement(){
  $("vehicle-cancel").onclick=clear;
  form.onsubmit=e=>{
   e.preventDefault();
-  const v={id:editing,name:$("vehicle-name").value.trim(),type:$("vehicle-type").value,fee:Number($("vehicle-fee").value),cost:Number($("vehicle-cost").value),capacity:Number($("vehicle-capacity").value),colours:$("vehicle-colours").value.split(",").map(s=>s.trim()).filter(Boolean),notes:$("vehicle-notes").value.trim(),photo:$("vehicle-photo").value.trim()};
+  const v={id:editing,name:$("vehicle-name").value.trim(),type:$("vehicle-type").value,fee:Number($("vehicle-fee").value),cost:Number($("vehicle-cost").value),capacity:Number($("vehicle-capacity").value),plate:$("vehicle-plate").value.trim().toUpperCase(),colours:$("vehicle-colours").value.split(",").map(s=>s.trim()).filter(Boolean),notes:$("vehicle-notes").value.trim(),photo:$("vehicle-photo").value.trim()};
   if(!v.name||!Number.isFinite(v.fee)||v.fee<0||!Number.isFinite(v.cost)||v.cost<0||v.capacity<1)return;
   $("vehicle-status").textContent="Saving…";
   document.dispatchEvent(new CustomEvent("vu:vehicle-save",{detail:v}));
@@ -261,11 +261,11 @@ function setupVehicleManagement(){
   for(const v of records){
    const row=document.createElement("div");row.className="item";
    const details=document.createElement("div");const name=document.createElement("strong");name.textContent=v.name;
-   const info=document.createElement("div");info.className="muted";info.textContent=v.type+" · Hire "+cash(v.fee)+" · Cost "+cash(v.cost)+" · Capacity "+v.capacity+" · "+(v.colours||[]).join(", ");
+   const info=document.createElement("div");info.className="muted";info.textContent=v.type+" · Hire "+cash(v.fee)+" · Cost "+cash(v.cost)+" · Plate "+(v.plate||"Not set")+" · Capacity "+v.capacity+" · "+(v.colours||[]).join(", ");
    details.append(name,info);
    const edit=document.createElement("button");edit.type="button";edit.textContent="Edit";edit.onclick=()=>{
     editing=v.id;
-    for(const key of ["name","type","fee","cost","capacity","notes","photo"]){const field=$("vehicle-"+key);if(field)field.value=v[key]??""}
+    for(const key of ["name","type","fee","cost","capacity","plate","notes","photo"]){const field=$("vehicle-"+key);if(field)field.value=v[key]??""}
     $("vehicle-colours").value=(v.colours||[]).join(", ");
     form.scrollIntoView({block:"nearest"});
    };
