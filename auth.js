@@ -213,7 +213,7 @@ function setupStaffManagement() {
       const details = document.createElement("div");
       const title = document.createElement("strong"); title.textContent = employee.name;
       const sub = document.createElement("div"); sub.className = "muted";
-      sub.textContent = employee.username + " · " + (employee.roles || []).join(", ") + " · Profile only (login not activated)";
+      sub.textContent = employee.username + " · " + (employee.roles || []).join(", ") + " · Access: " + (employee.access || []).join(", ") + " · Profile only (login not activated)";
       details.append(title, sub);
       const remove = document.createElement("button"); remove.type = "button"; remove.textContent = "Remove";
       remove.addEventListener("click", async () => {
@@ -235,14 +235,15 @@ function setupStaffManagement() {
     const name = document.getElementById("staff-name").value.trim();
     const username = document.getElementById("staff-username").value.trim();
     const roles = [...form.querySelectorAll('input[name="staff-role"]:checked')].map(e => e.value);
-    if (!name || !/^[-_a-zA-Z0-9]{3,32}$/.test(username) || !roles.length) {
-      message.textContent = "Enter a name, valid username and at least one role."; return;
+    const access = [...form.querySelectorAll('input[name="staff-access"]:checked')].map(e => e.value);
+    if (!name || !/^[-_a-zA-Z0-9]{3,32}$/.test(username) || !roles.length || !access.length) {
+      message.textContent = "Enter a name, valid username and at least one role and access permission."; return;
     }
     if (username.toLowerCase() === "vu-owner" || employees.some(e => e.username.toLowerCase() === username.toLowerCase())) {
       message.textContent = "That username is already reserved or in use."; return;
     }
     try {
-      await addDoc(collection(db, "staffProfiles"), { name, username, roles, status: "pending", createdAt: serverTimestamp() });
+      await addDoc(collection(db, "staffProfiles"), { name, username, roles, access, status: "pending", createdAt: serverTimestamp() });
       form.reset(); message.textContent = "Employee profile saved. Login activation is not available yet.";
     } catch (error) { message.textContent = "Could not save: " + error.message; }
   });
