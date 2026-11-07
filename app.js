@@ -243,10 +243,57 @@ function render(){for(let x of data.drinks){line($("drink-list"),x.name,x.price,
  card.append(visual,body);$("recipes-list").append(card);
  }setupWasteCalculator(data.recipes);setupOrderCalculator(data);setupMonthCalendar();if(!data.bookings.length)$("booking-list").append(el("div","item","No bookings published yet."));for(let b of [...data.bookings].sort((a,b)=>a.start.localeCompare(b.start))){let box=el("div","item");box.append(el("div",null,b.title+" — "+b.start+" to "+b.end+" ("+(b.resources||[]).join(", ")+")"));$("booking-list").append(box)}for(let r of data.resources){let o=document.createElement("option");o.value=r.id;o.textContent=r.name;$("check-resource").append(o)}let sel=document.createElement("select");sel.id="limo-choice";sel.addEventListener("change",update);sel.append(new Option("Select a vehicle",""));for(let l of data.limousines){let o=new Option(l.name+(l.active?"":" (not active)"),l.id);o.disabled=!l.active||!validPrice(l.hourlyPrice);sel.append(o)}$("limo-list").append(sel);update()}function check(){let start=$("check-start").value,end=$("check-end").value,res=$("check-resource").value,out=$("availability-result");out.className="";if(!start||!end||start>=end){out.textContent="Select a valid start and end time.";out.className="warn";return}let conflicts=data.bookings.filter(b=>(b.resources||[]).includes(res)&&start<b.end&&end>b.start);out.textContent=conflicts.length?"Unavailable: "+conflicts.map(b=>b.title).join(", "):"No conflict found in published bookings. Confirm staff and resources with management.";out.className=conflicts.length?"warn":"ok"}document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-tab]").forEach(n=>n.classList.remove("active"));document.querySelectorAll(".view").forEach(v=>v.classList.add("hidden"));b.classList.add("active");$(b.dataset.tab).classList.remove("hidden")}));$("copy-drinks").onclick=()=>copyQuote("VU DRINKS QUOTE",selections("d-",data.drinks));$("check-availability").onclick=check;["tip-amount","tip-percent","limo-hours"].forEach(id=>$(id).addEventListener("input",update));fetch("data/public.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("Data unavailable");return r.json()}).then(d=>{data=d;render()}).catch(()=>{$("drink-list").textContent="Could not load published prices. Refresh or contact VU management."});
 
+function setupVehicleManagement(){
+ const form=$("vehicle-form"),list=$("vehicle-records");if(!form)return;
+ let records=[],editing="";
+ const clear=()=>{editing="";form.reset();$("vehicle-status").textContent=""};
+ $("vehicle-cancel").onclick=clear;
+ form.onsubmit=e=>{
+  e.preventDefault();
+  const v={id:editing,name:$("vehicle-name").value.trim(),type:$("vehicle-type").value,fee:Number($("vehicle-fee").value),cost:Number($("vehicle-cost").value),capacity:Number($("vehicle-capacity").value),colours:$("vehicle-colours").value.split(",").map(s=>s.trim()).filter(Boolean),notes:$("vehicle-notes").value.trim(),photo:$("vehicle-photo").value.trim()};
+  if(!v.name||!Number.isFinite(v.fee)||v.fee<0||!Number.isFinite(v.cost)||v.cost<0||v.capacity<1)return;
+  $("vehicle-status").textContent="Saving…";
+  document.dispatchEvent(new CustomEvent("vu:vehicle-save",{detail:v}));
+ };
+ document.addEventListener("vu:vehicles-updated",e=>{
+  records=e.detail||[];list.replaceChildren();
+  if(!records.length)list.textContent="No vehicles added yet.";
+  for(const v of records){
+   const row=document.createElement("div");row.className="item";
+   const details=document.createElement("div");const name=document.createElement("strong");name.textContent=v.name;
+   const info=document.createElement("div");info.className="muted";info.textContent=v.type+" · Hire "+cash(v.fee)+" · Cost "+cash(v.cost)+" · Capacity "+v.capacity+" · "+(v.colours||[]).join(", ");
+   details.append(name,info);
+   const edit=document.createElement("button");edit.type="button";edit.textContent="Edit";edit.onclick=()=>{
+    editing=v.id;
+    for(const key of ["name","type","fee","cost","capacity","notes","photo"]){const field=$("vehicle-"+key);if(field)field.value=v[key]??""}
+    $("vehicle-colours").value=(v.colours||[]).join(", ");
+    form.scrollIntoView({block:"nearest"});
+   };
+   const remove=document.createElement("button");remove.type="button";remove.textContent="Remove";remove.onclick=()=>{if(confirm("Remove "+v.name+"?"))document.dispatchEvent(new CustomEvent("vu:vehicle-delete",{detail:v.id}))};
+   row.append(details,edit,remove);list.append(row);
+  }
+  const select=$("vu-pkg-limo-vehicle");
+  if(select){
+   const selected=select.value;select.replaceChildren(new Option("Manual price",""));
+   for(const v of records.filter(x=>x.type==="limo"))select.append(new Option(v.name+" — "+cash(v.fee),v.id));
+   select.value=selected;
+   select.onchange=()=>{
+    const v=records.find(x=>x.id===select.value);if(!v)return;
+    $("vu-pkg-limo-fee").value=v.fee;
+    $("vu-pkg-limo-expenses").value=v.cost;
+    updatePackageTotals();
+   };
+  }
+ });
+ document.addEventListener("vu:vehicle-saved",()=>{clear();$("vehicle-status").textContent="Vehicle saved."});
+ document.addEventListener("vu:vehicles-error",e=>{$("vehicle-status").textContent="Error: "+e.detail});
+ document.dispatchEvent(new Event("vu:vehicles-ready"));
+}
 // Main navigation and nested settings sections.
+setupVehicleManagement();
 (function(){
  const primary=["overview","recipes","transactions","packages","tips","calendar","settings"];
- const nested=["staff","costing","pricing","drinks","limo","events","package-media","incidents"];
+ const nested=["staff","costing","pricing","limo","events","package-media","incidents"];
  const settingsContent=document.getElementById("settings-content");
  nested.forEach(id=>{const node=document.getElementById(id);if(node){node.classList.add("settings-panel");settingsContent.append(node);}});
  const nav=[...document.querySelectorAll("nav [data-tab]")];

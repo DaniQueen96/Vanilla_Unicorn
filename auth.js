@@ -80,6 +80,26 @@ document.addEventListener("vu:save-price",async event=>{
 });
 
 
+const vehicleCollection=collection(db,"vuVehicles");
+let vehicleStop=null;
+document.addEventListener("vu:vehicles-ready",()=>{
+ if(vehicleStop)return;
+ vehicleStop=onSnapshot(vehicleCollection,s=>document.dispatchEvent(new CustomEvent("vu:vehicles-updated",{detail:s.docs.map(d=>({id:d.id,...d.data()}))})),e=>document.dispatchEvent(new CustomEvent("vu:vehicles-error",{detail:e.message})));
+});
+document.addEventListener("vu:vehicle-save",async e=>{
+ if(auth.currentUser?.uid!==OWNER_UID)return;
+ const v=e.detail;const {id,...fields}=v;
+ try{
+  if(id)await setDoc(doc(db,"vuVehicles",id),fields,{merge:true});
+  else await addDoc(vehicleCollection,{...fields,createdAt:serverTimestamp()});
+  document.dispatchEvent(new Event("vu:vehicle-saved"));
+ }catch(error){document.dispatchEvent(new CustomEvent("vu:vehicles-error",{detail:error.message}))}
+});
+document.addEventListener("vu:vehicle-delete",async e=>{
+ if(auth.currentUser?.uid!==OWNER_UID)return;
+ try{await deleteDoc(doc(db,"vuVehicles",e.detail));}
+ catch(error){document.dispatchEvent(new CustomEvent("vu:vehicles-error",{detail:error.message}))}
+});
 const packageImagesDoc=doc(db,"businessSettings","packageImages");let stopPackageImages=null;
 function beginPackageImageSync(){if(stopPackageImages)return;stopPackageImages=onSnapshot(packageImagesDoc,s=>document.dispatchEvent(new CustomEvent("vu:package-images-updated",{detail:s.exists()?(s.data().images||{}):{}})),e=>document.dispatchEvent(new CustomEvent("vu:package-image-error",{detail:e.message})))}
 document.addEventListener("vu:package-media-ready",beginPackageImageSync);
@@ -180,7 +200,7 @@ onAuthStateChanged(auth, async (user) => {
   if (owner && !appLoaded) {
     appLoaded = true;
     const script = document.createElement("script");
-    script.src = "app.js?v=20261107-paste2";
+    script.src = "app.js?v=20261107-vehicles3";
     document.body.append(script);
   }
   if(user&&!owner){
