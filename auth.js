@@ -208,7 +208,13 @@ onAuthStateChanged(auth, async (user) => {
     appLoaded = true;
     const script = document.createElement("script");
     script.type = "module";
-    script.src = "app.js?v=20261107-recipes21";
+    script.src = "app.js?v=20261107-till-bootstrap22";
+    script.onerror = () => {
+      appLoaded = false;
+      const target = document.getElementById("order-categories");
+      if (target) target.textContent = "Bar Calculator could not load its application script. Refresh the page or contact management.";
+      console.error("VU app.js failed to load");
+    };
     document.body.append(script);
   }
   if(user&&!owner){
