@@ -68,6 +68,7 @@ let pkgCategory="Cocktails",pkgCustom=[],pkgDraftId=null,pkgDrafts=[],pkgStep="p
 const pkgFields=["vu-plan-name","vu-plan-customer","vu-pkg-occasion","vu-plan-guests","vu-plan-guests-max","vu-pkg-start","vu-pkg-end","vu-pkg-location","vu-plan-budget","vu-pkg-requests","vu-plan-discount","vu-pkg-room-fee","vu-pkg-room-expenses","vu-pkg-van-colour","vu-pkg-van-location","vu-pkg-limo-colour","vu-pkg-limo-route","vu-pkg-limo-requests","vu-pkg-event-theme","vu-pkg-event-style","vu-pkg-van-enabled","vu-pkg-van-fee","vu-pkg-van-hours","vu-pkg-van-cost","vu-pkg-van-expenses","vu-pkg-limo-enabled","vu-pkg-limo-fee","vu-pkg-limo-hours","vu-pkg-limo-expenses","vu-pkg-extra-cost","vu-pkg-adjustment","vu-pkg-bartenders","vu-pkg-dancers","vu-pkg-djs","vu-pkg-security","vu-pkg-drivers","vu-pkg-status","vu-pkg-itinerary","vu-pkg-checklist"];
 const pkgNum=id=>Number($(id)?.value||0)||0;
 function pkgTotals(){
+ const unpriced=packageEntries.filter(x=>x.quantity>0&&x.kind!=="special"&&!validPrice(x.price));
  const lines=packageEntries.filter(x=>x.quantity>0&&validPrice(x.price));
  const customs=pkgCustom.filter(x=>x.quantity>0);
  const van=$("vu-pkg-van-enabled")?.checked,limo=$("vu-pkg-limo-enabled")?.checked;
@@ -78,14 +79,14 @@ function pkgTotals(){
  const subtotal=all.reduce((s,x)=>s+x.price*x.quantity,0),discount=pkgNum("vu-plan-discount"),adjustment=pkgNum("vu-pkg-adjustment"),total=Math.max(0,subtotal*(1-discount/100)+adjustment);
  const known=lines.filter(x=>x.kind!=="special").reduce((s,x)=>s+((liveUnitCost(x)??0)*x.quantity),0)+customs.reduce((s,x)=>s+x.cost*x.quantity,0)+catering.reduce((s,x)=>s+x.cost*x.quantity,0)+(van?pkgNum("vu-pkg-van-expenses"):0)+(limo?pkgNum("vu-pkg-limo-expenses"):0)+(room?pkgNum("vu-pkg-room-expenses"):0)+pkgNum("vu-pkg-extra-cost");
  const missing=lines.filter(x=>x.kind!=="special"&&liveUnitCost(x)===null).length;
- return {all,subtotal,discount,total,known,missing,profit:missing?null:total-known,van,limo};
+ return {all,subtotal,discount,total,known,missing,unpriced:unpriced.map(x=>x.name),profit:missing||unpriced.length?null:total-known,van,limo};
 }
 function updatePackageTotals(){
  if(!$("package-total"))return;
  pkgShowStaffSuggestion();const t=pkgTotals(),guests=Math.max(1,pkgNum("vu-plan-guests")),budget=pkgNum("vu-plan-budget");
  const set=(id,v)=>{if($(id))$(id).textContent=v};
  set("package-total",cash(t.total));set("vu-plan-subtotal",cash(t.subtotal));set("vu-plan-savings","−"+cash(t.subtotal*t.discount/100));set("vu-plan-per-guest",cash(t.total/guests));set("vu-plan-discount-label",t.discount+"%");
- set("vu-pkg-known-costs",cash(t.known));set("vu-pkg-profit",t.missing?"Unknown — "+t.missing+" item cost(s) missing":cash(t.profit));set("vu-pkg-margin",t.missing?"Unknown":t.total?(100*t.profit/t.total).toFixed(1)+"%":"—");
+ set("vu-pkg-known-costs",cash(t.known));if(t.unpriced.length)console.warn("VU package has unpriced selected items excluded from totals:",t.unpriced);set("vu-pkg-profit",t.unpriced.length?"Incomplete — missing prices: "+t.unpriced.join(", "):t.missing?"Unknown — "+t.missing+" item cost(s) missing":cash(t.profit));set("vu-pkg-margin",t.missing||t.unpriced.length?"Unknown":t.total?(100*t.profit/t.total).toFixed(1)+"%":"—");
  set("vu-pkg-summary-name",$("vu-plan-name")?.value||"New package");set("vu-pkg-item-count",String(t.all.reduce((s,x)=>s+x.quantity,0)));set("vu-pkg-summary-subtotal",cash(t.subtotal));set("vu-pkg-summary-discount","−"+cash(t.subtotal*t.discount/100));
  const budgetText=budget?(t.total<=budget?"Within budget · "+cash(budget-t.total)+" remaining":"Over budget by "+cash(t.total-budget)):"Set a budget to compare your quote.";
  set("vu-plan-feedback",budgetText);set("vu-pkg-budget-note",budgetText);
