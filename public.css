@@ -164,3 +164,10 @@
 #hero-photo-panel .hero-nav-prev{left:12px}#hero-photo-panel .hero-nav-next{right:12px}
 #hero-photo-panel .hero-featured-photo{pointer-events:none}
 @media(max-width:580px){#hero-photo-panel .hero-nav{width:34px;height:42px;font-size:27px}#hero-photo-panel .hero-nav-prev{left:6px}#hero-photo-panel .hero-nav-next{right:6px}}
+
+/* Seamless, vertically centred hero slideshow controls */
+#hero-photo-panel .hero-nav{top:50%;transform:translateY(-50%);width:38px;height:54px;border:0;border-radius:0;background:linear-gradient(90deg,rgba(12,7,17,.56),rgba(12,7,17,.12));box-shadow:none;color:#fff;font-size:34px;opacity:.7;outline-offset:2px;transition:opacity .18s,background .18s}
+#hero-photo-panel .hero-nav-prev{left:0;border-radius:0 10px 10px 0}
+#hero-photo-panel .hero-nav-next{right:0;border-radius:10px 0 0 10px;background:linear-gradient(270deg,rgba(12,7,17,.56),rgba(12,7,17,.12))}
+#hero-photo-panel .hero-nav:hover,#hero-photo-panel .hero-nav:focus-visible{opacity:1;background:rgba(12,7,17,.65);outline:2px solid #f4a0d3}
+@media(max-width:580px){#hero-photo-panel .hero-nav{width:30px;height:48px;font-size:28px}#hero-photo-panel .hero-nav-prev{left:0}#hero-photo-panel .hero-nav-next{right:0}}
