@@ -440,7 +440,7 @@ function setupOrderCalculator(data){
  ];
  const extra=drinks.filter(x=>!groups.some(g=>g[1].some(y=>y.id===x.id)));if(extra.length)groups.push(["More Drinks",extra]);
  let saved={};
- const fallbackPrices={Whiskey:65,Rum:78,Vodka:50,Tequila:25,Absinthe:52,Beer:12,Cider:18,Koka:10,Frezzi:10,Sprunk:10,Tanga:10,"Sweet Tea":12,"Green Cow":20,"Tomato Juice":15,"Pigeon Milk":32,"Almond Milk":28,Water:4,"Angostura Bitters":32,Grenadine:26,Sugar:6,Salt:8,"Cocoa Powder":10,Lemon:6,Lime:6,Orange:8,Cherry:4,Pineapple:14,Coconut:10,"Mint Leaves":6,Olives:14,"Chili Peppers":6,Eggs:8,"Hot Dog":10,"Ham Sandwich":16,Nachos:10,"Salted Peanuts":12,"S'mores":20,Skittles:10};
+ const fallbackPrices={Whiskey:65,Rum:78,Vodka:50,Tequila:25,Absinthe:52,Beer:12,Cider:18,Koka:10,Frezzi:10,Sprunk:10,Tanga:10,"Sweet Tea":12,"Green Cow":20,"Tomato Juice":15,"Pigeon Milk":32,"Almond Milk":28,Water:4,"Angostura Bitters":32,Grenadine:26,Sugar:6,Salt:8,"Cocoa Powder":10,Lemon:6,Lime:6,Orange:8,Cherry:4,Pineapple:14,Coconut:10,"Mint Leaves":6,Olives:14,"Chili Peppers":6,Eggs:8,"Hot Dog":10,"Ham Sandwich":16,Nachos:10,"Salted Peanuts":12,"S'mores":20,Skittles:10,"Paper Straw":1};
  const fallbackRecipes=[
  ["Whiskey Sour",1,["Lemon","Whiskey","Eggs","Sugar"]],
  ["Pina Colada",2,["Rum","Pineapple","Coconut"]],
