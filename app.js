@@ -22,8 +22,27 @@ function setupPackageMedia(){
  select.replaceChildren(new Option("Choose an item",""));for(const x of items)select.append(new Option(x.name,pkgImageKey(x)));
  const preview=()=>{const url=$("vu-media-url").value.trim(),img=$("vu-media-preview");img.src=url||"assets/vu-unicorn.svg";$("vu-media-placeholder").hidden=!!url;img.onerror=()=>{img.onerror=null;img.src="assets/vu-unicorn.svg";$("vu-media-placeholder").hidden=false}};
  select.onchange=()=>{$("vu-media-url").value=packageImages[select.value]||"";preview()};
+
+ let pastedImage=null;
+ const pasteZone=$("vu-media-paste-zone");
+ pasteZone.onclick=()=>pasteZone.focus();
+ pasteZone.addEventListener("paste",async e=>{
+   const file=Array.from(e.clipboardData?.items||[]).find(i=>i.type.startsWith("image/"))?.getAsFile();
+   if(!file)return;e.preventDefault();
+   if(!select.value){$("vu-media-status").textContent="Choose a package item first.";return}
+   try{
+     const bitmap=await createImageBitmap(file),factor=Math.min(1,640/Math.max(bitmap.width,bitmap.height));
+     const canvas=document.createElement("canvas");
+     canvas.width=Math.max(1,Math.round(bitmap.width*factor));canvas.height=Math.max(1,Math.round(bitmap.height*factor));
+     canvas.getContext("2d").drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();
+     pastedImage=canvas.toDataURL("image/jpeg",0.65);
+     if(pastedImage.length>350000)throw Error("Image too large. Crop and try again.");
+     $("vu-media-url").value=pastedImage;preview();
+     $("vu-media-status").textContent="Screenshot ready. Click Save image.";
+   }catch(error){$("vu-media-status").textContent=error.message}
+ });
  $("vu-media-url").oninput=preview;
- $("vu-media-save").onclick=()=>{if(!select.value){$("vu-media-status").textContent="Choose an item first.";return}const url=$("vu-media-url").value.trim();if(url&&!/^https:\/\//i.test(url)){$("vu-media-status").textContent="Paste a valid HTTPS image URL.";return}document.dispatchEvent(new CustomEvent("vu:package-image-save",{detail:{key:select.value,url}}));$("vu-media-status").textContent="Saving…"};
+ $("vu-media-save").onclick=()=>{if(!select.value){$("vu-media-status").textContent="Choose an item first.";return}const url=$("vu-media-url").value.trim();if(url&&!/^https:\/\//i.test(url)&&!/^data:image\/jpeg;base64,/i.test(url)){$("vu-media-status").textContent="Paste a valid HTTPS image URL.";return}document.dispatchEvent(new CustomEvent("vu:package-image-save",{detail:{key:select.value,url}}));$("vu-media-status").textContent="Saving…"};
  $("vu-media-clear").onclick=()=>{$("vu-media-url").value="";preview();$("vu-media-save").click()};
  document.addEventListener("vu:package-images-updated",e=>{packageImages=e.detail||{};if(select.value){$("vu-media-url").value=packageImages[select.value]||"";preview()}renderPackageCreator();});
  document.addEventListener("vu:package-image-saved",()=>{$("vu-media-status").textContent="Image saved for all devices."});
