@@ -89,6 +89,7 @@ document.addEventListener("vu:vehicles-ready",()=>{
 document.addEventListener("vu:vehicle-save",async e=>{
  if(auth.currentUser?.uid!==OWNER_UID)return;
  const v=e.detail;const {id,...fields}=v;
+ if(!v.name||!["limo","van","other"].includes(v.type)||!Number.isFinite(v.fee)||v.fee<0||!Number.isFinite(v.cost)||v.cost<0||!Number.isFinite(v.purchase)||v.purchase<0||!Number.isInteger(v.capacity)||v.capacity<1||typeof v.photo!=="string"||(v.photo&&!/^https:\/\//i.test(v.photo)&&!/^data:image\/jpeg;base64,/i.test(v.photo))||v.photo.length>260000){document.dispatchEvent(new CustomEvent("vu:vehicles-error",{detail:"Invalid vehicle details or image."}));return;}
  try{
   if(id)await setDoc(doc(db,"vuVehicles",id),fields,{merge:true});
   else await addDoc(vehicleCollection,{...fields,createdAt:serverTimestamp()});
@@ -200,7 +201,7 @@ onAuthStateChanged(auth, async (user) => {
   if (owner && !appLoaded) {
     appLoaded = true;
     const script = document.createElement("script");
-    script.src = "app.js?v=20261107-plate1";
+    script.src = "app.js?v=20261107-fleet4";
     document.body.append(script);
   }
   if(user&&!owner){

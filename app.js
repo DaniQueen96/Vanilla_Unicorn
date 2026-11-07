@@ -246,12 +246,29 @@ function render(){for(let x of data.drinks){line($("drink-list"),x.name,x.price,
 function setupVehicleManagement(){
  const form=$("vehicle-form"),list=$("vehicle-records");if(!form)return;
  let records=[],editing="";
- const clear=()=>{editing="";form.reset();$("vehicle-status").textContent=""};
- $("vehicle-cancel").onclick=clear;
+ const clear=()=>{editing="";form.reset();$("vehicle-status").textContent="";const preview=$("vehicle-preview");if(preview)preview.style.display="none"};
+ $("vehicle-cancel").onclick=()=>{clear();photoPreview.style.display="none"};
+ const pasteZone=$("vehicle-paste"),photoField=$("vehicle-photo"),photoPreview=$("vehicle-preview");
+ const showPhoto=()=>{const url=photoField.value.trim();photoPreview.style.display=url?"block":"none";if(url)photoPreview.src=url};
+ photoField.addEventListener("input",showPhoto);
+ pasteZone.onclick=()=>pasteZone.focus();
+ pasteZone.addEventListener("paste",async event=>{
+  const file=Array.from(event.clipboardData?.items||[]).find(i=>i.type.startsWith("image/"))?.getAsFile();
+  if(!file)return;event.preventDefault();
+  try{
+   const bitmap=await createImageBitmap(file),scale=Math.min(1,600/Math.max(bitmap.width,bitmap.height));
+   const canvas=document.createElement("canvas");canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+   canvas.getContext("2d").drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();
+   const url=canvas.toDataURL("image/jpeg",0.6);
+   if(url.length>250000)throw Error("Image too large; crop and paste again.");
+   photoField.value=url;showPhoto();$("vehicle-status").textContent="Photo ready. Save the vehicle.";
+  }catch(error){$("vehicle-status").textContent="Photo paste failed: "+error.message}
+ });
+
  form.onsubmit=e=>{
   e.preventDefault();
-  const v={id:editing,name:$("vehicle-name").value.trim(),type:$("vehicle-type").value,fee:Number($("vehicle-fee").value),cost:Number($("vehicle-cost").value),capacity:Number($("vehicle-capacity").value),plate:$("vehicle-plate").value.trim().toUpperCase(),colours:$("vehicle-colours").value.split(",").map(s=>s.trim()).filter(Boolean),notes:$("vehicle-notes").value.trim(),photo:$("vehicle-photo").value.trim()};
-  if(!v.name||!Number.isFinite(v.fee)||v.fee<0||!Number.isFinite(v.cost)||v.cost<0||v.capacity<1)return;
+  const v={id:editing,name:$("vehicle-name").value.trim(),type:$("vehicle-type").value,fee:Number($("vehicle-fee").value),cost:Number($("vehicle-cost").value),purchase:Number($("vehicle-purchase").value||0),capacity:Number($("vehicle-capacity").value),plate:$("vehicle-plate").value.trim().toUpperCase(),colours:$("vehicle-colours").value.split(",").map(s=>s.trim()).filter(Boolean),notes:$("vehicle-notes").value.trim(),photo:$("vehicle-photo").value.trim()};
+  if(!v.name||!Number.isFinite(v.fee)||v.fee<0||!Number.isFinite(v.cost)||v.cost<0||v.purchase<0||v.capacity<1)return;
   $("vehicle-status").textContent="Saving…";
   document.dispatchEvent(new CustomEvent("vu:vehicle-save",{detail:v}));
  };
@@ -261,26 +278,27 @@ function setupVehicleManagement(){
   for(const v of records){
    const row=document.createElement("div");row.className="item";
    const details=document.createElement("div");const name=document.createElement("strong");name.textContent=v.name;
-   const info=document.createElement("div");info.className="muted";info.textContent=v.type+" · Hire "+cash(v.fee)+" · Cost "+cash(v.cost)+" · Plate "+(v.plate||"Not set")+" · Capacity "+v.capacity+" · "+(v.colours||[]).join(", ");
-   details.append(name,info);
+   const info=document.createElement("div");info.className="muted";info.textContent=v.type+" · Hire "+cash(v.fee)+" · Cost "+cash(v.cost)+" · Purchase "+cash(v.purchase||0)+" · Plate "+(v.plate||"Not set")+" · Capacity "+v.capacity+" · "+(v.colours||[]).join(", ");
+   details.append(name,info);if(v.photo){const img=document.createElement("img");img.src=v.photo;img.alt=v.name;img.style.cssText="width:100px;height:65px;object-fit:cover;border-radius:8px";details.prepend(img)}
    const edit=document.createElement("button");edit.type="button";edit.textContent="Edit";edit.onclick=()=>{
     editing=v.id;
-    for(const key of ["name","type","fee","cost","capacity","plate","notes","photo"]){const field=$("vehicle-"+key);if(field)field.value=v[key]??""}
+    for(const key of ["name","type","fee","cost","purchase","capacity","plate","notes","photo"]){const field=$("vehicle-"+key);if(field)field.value=v[key]??""}
     $("vehicle-colours").value=(v.colours||[]).join(", ");
-    form.scrollIntoView({block:"nearest"});
+    showPhoto();form.scrollIntoView({block:"nearest"});
    };
    const remove=document.createElement("button");remove.type="button";remove.textContent="Remove";remove.onclick=()=>{if(confirm("Remove "+v.name+"?"))document.dispatchEvent(new CustomEvent("vu:vehicle-delete",{detail:v.id}))};
    row.append(details,edit,remove);list.append(row);
   }
-  const select=$("vu-pkg-limo-vehicle");
-  if(select){
+  for(const [type,id,fee,cost,colour] of [["limo","vu-pkg-limo-vehicle","vu-pkg-limo-fee","vu-pkg-limo-expenses","vu-pkg-limo-colour"],["van","vu-pkg-van-vehicle","vu-pkg-van-fee","vu-pkg-van-expenses","vu-pkg-van-colour"]]){
+   const select=$(id);if(!select)continue;
    const selected=select.value;select.replaceChildren(new Option("Manual price",""));
-   for(const v of records.filter(x=>x.type==="limo"))select.append(new Option(v.name+" — "+cash(v.fee),v.id));
+   for(const v of records.filter(x=>x.type===type))select.append(new Option(v.name+" — "+cash(v.fee),v.id));
    select.value=selected;
    select.onchange=()=>{
     const v=records.find(x=>x.id===select.value);if(!v)return;
-    $("vu-pkg-limo-fee").value=v.fee;
-    $("vu-pkg-limo-expenses").value=v.cost;
+    $(fee).value=v.fee;$(cost).value=v.cost;
+    const colourSelect=$(colour);
+    if(colourSelect&&v.colours?.length)colourSelect.replaceChildren(new Option("Choose colour",""),...v.colours.map(c=>new Option(c,c)));
     updatePackageTotals();
    };
   }
