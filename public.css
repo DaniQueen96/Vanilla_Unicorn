@@ -21,3 +21,6 @@
 
 /* Hero grid correction: decorative glow must not occupy a grid cell. */
 .hero>.hero-glow{position:absolute;inset:0;pointer-events:none;grid-column:auto;grid-row:auto}.hero>.hero-inner{grid-column:1;grid-row:1;min-width:0;z-index:1}.hero>.hero-photo-panel{grid-column:2;grid-row:1;min-width:0;z-index:1}.hero-photo-panel:not(.has-photo){background:linear-gradient(135deg,#51244c,#241429);}.hero-photo-placeholder{position:relative;z-index:1}.hero-photo-panel:not(.has-photo) .hero-photo-placeholder{display:grid!important}.hero-photo-panel:not(.has-photo) .hero-gallery-link{display:none}@media(max-width:950px){.hero>.hero-inner{grid-column:1;grid-row:1}.hero>.hero-photo-panel{grid-column:1;grid-row:2}}
+
+/* Keep the featured photo at full grid-column width after its placeholder is hidden. */
+.hero>.hero-photo-panel{width:100%;min-width:0;max-width:100%;justify-self:stretch;align-self:center;isolation:isolate}.hero-photo-panel.has-photo{background:#241429}.hero-featured-photo{display:block;min-width:100%;min-height:100%;object-fit:cover}.hero-photo-panel.has-photo .hero-photo-caption{z-index:2}.hero-photo-panel.has-photo .hero-gallery-link{z-index:3}@media(max-width:950px){.hero>.hero-photo-panel{width:100%;max-width:100%}}
