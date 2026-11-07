@@ -76,14 +76,14 @@ function pkgTotals(){
  const subtotal=all.reduce((s,x)=>s+x.price*x.quantity,0),discount=pkgNum("vu-plan-discount"),adjustment=pkgNum("vu-pkg-adjustment"),total=Math.max(0,subtotal*(1-discount/100)+adjustment);
  const known=lines.filter(x=>x.kind!=="special").reduce((s,x)=>s+((liveUnitCost(x)??0)*x.quantity),0)+customs.reduce((s,x)=>s+x.cost*x.quantity,0)+catering.reduce((s,x)=>s+x.cost*x.quantity,0)+(van?pkgNum("vu-pkg-van-expenses"):0)+(limo?pkgNum("vu-pkg-limo-expenses"):0)+(room?pkgNum("vu-pkg-room-expenses"):0)+pkgNum("vu-pkg-extra-cost");
  const missing=lines.filter(x=>x.kind!=="special"&&liveUnitCost(x)===null).length;
- return {all,subtotal,discount,total,known,missing,profit:total-known,van,limo};
+ return {all,subtotal,discount,total,known,missing,profit:missing?null:total-known,van,limo};
 }
 function updatePackageTotals(){
  if(!$("package-total"))return;
  pkgShowStaffSuggestion();const t=pkgTotals(),guests=Math.max(1,pkgNum("vu-plan-guests")),budget=pkgNum("vu-plan-budget");
  const set=(id,v)=>{if($(id))$(id).textContent=v};
  set("package-total",cash(t.total));set("vu-plan-subtotal",cash(t.subtotal));set("vu-plan-savings","−"+cash(t.subtotal*t.discount/100));set("vu-plan-per-guest",cash(t.total/guests));set("vu-plan-discount-label",t.discount+"%");
- set("vu-pkg-known-costs",cash(t.known));set("vu-pkg-profit",cash(t.profit));set("vu-pkg-margin",t.total?(100*t.profit/t.total).toFixed(1)+"%":"—");
+ set("vu-pkg-known-costs",cash(t.known));set("vu-pkg-profit",t.missing?"Unknown — "+t.missing+" item cost(s) missing":cash(t.profit));set("vu-pkg-margin",t.missing?"Unknown":t.total?(100*t.profit/t.total).toFixed(1)+"%":"—");
  set("vu-pkg-summary-name",$("vu-plan-name")?.value||"New package");set("vu-pkg-item-count",String(t.all.reduce((s,x)=>s+x.quantity,0)));set("vu-pkg-summary-subtotal",cash(t.subtotal));set("vu-pkg-summary-discount","−"+cash(t.subtotal*t.discount/100));
  const budgetText=budget?(t.total<=budget?"Within budget · "+cash(budget-t.total)+" remaining":"Over budget by "+cash(t.total-budget)):"Set a budget to compare your quote.";
  set("vu-plan-feedback",budgetText);set("vu-pkg-budget-note",budgetText);
@@ -98,7 +98,7 @@ function pkgCocktailPrice(item){
  const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
  const match=Object.entries(sharedSellingPrices).find(([key,v])=>key.startsWith("Cocktails::")&&v!==null&&Number.isFinite(Number(v))&&norm(key.split("::").slice(1).join("::"))===norm(item.name));
  if(match)return {price:Number(match[1]),estimated:false};
- const cost=typeof pkgRecipeUnitCost==="function"?pkgRecipeUnitCost(item):null,margin=Number(sharedSellingPrices.__defaultMargin??30);
+ const cost=liveUnitCost(item),margin=Number(sharedSellingPrices.__defaultMargin??30);
  return {price:cost===null||!Number.isFinite(cost)?null:Math.ceil(cost/(1-Math.min(90,Math.max(0,margin))/100)/5)*5,estimated:true};
 }
 function renderPackageCreator(){
@@ -157,10 +157,10 @@ function pkgShowStaffSuggestion(){
  const elmt=$("vu-pkg-staff-suggestion");if(!elmt)return;
  const s=pkgStaffSuggestion();elmt.textContent="Suggested: "+Object.entries(s).map(([id,n])=>id.replace("vu-pkg-","")+": "+n).join(" · ")+". Adjust for your event.";
 }
-function pkgSnapshot(){return {fields:Object.fromEntries(pkgFields.map(id=>[id,$(id)?.type==="checkbox"?$(id).checked:$(id)?.value])),items:packageEntries.filter(x=>x.quantity>0).map(x=>({id:x.id,kind:x.kind,quantity:x.quantity,price:x.price})),custom:pkgCustom,catering:pkgCatering,serviceNotes:pkgServiceNotes,updatedAt:new Date().toISOString()};}
+function pkgSnapshot(){return {pricingSnapshot:true,quotedTotal:pkgTotals().total,fields:Object.fromEntries(pkgFields.map(id=>[id,$(id)?.type==="checkbox"?$(id).checked:$(id)?.value])),items:packageEntries.filter(x=>x.quantity>0).map(x=>({id:x.id,kind:x.kind,quantity:x.quantity,price:x.price,manualPrice:x.manualPrice===true})),custom:pkgCustom,catering:pkgCatering,serviceNotes:pkgServiceNotes,updatedAt:new Date().toISOString()};}
 function pkgLoad(d){
  const fields=d.fields||{};for(const id of pkgFields){const input=$(id);if(!input)continue;if(input.type==="checkbox")input.checked=Boolean(fields[id]);else if(fields[id]!=null)input.value=fields[id];}
- pkgCustom=Array.isArray(d.custom)?d.custom:[];pkgCatering=Array.isArray(d.catering)?d.catering:[];pkgRenderCatering();pkgServiceNotes=d.serviceNotes||{};const map=new Map((d.items||[]).map(x=>[x.kind+":"+x.id,x]));for(const x of packageEntries){const saved=map.get(x.kind+":"+x.id);x.quantity=saved?.quantity||0;if(saved)x.price=saved.price;}
+ pkgCustom=Array.isArray(d.custom)?d.custom:[];pkgCatering=Array.isArray(d.catering)?d.catering:[];pkgRenderCatering();pkgServiceNotes=d.serviceNotes||{};const map=new Map((d.items||[]).map(x=>[x.kind+":"+x.id,x]));for(const x of packageEntries){const saved=map.get(x.kind+":"+x.id);x.quantity=saved?.quantity||0;if(saved){x.price=saved.price;x.manualPrice=d.pricingSnapshot===true||saved.manualPrice===true;}}
  renderPackageCreator();pkgRenderCustom();$("vu-pkg-van-details").hidden=!$("vu-pkg-van-enabled").checked;$("vu-pkg-limo-details").hidden=!$("vu-pkg-limo-enabled").checked;if($("vu-pkg-van-toggle"))$("vu-pkg-van-toggle").checked=$("vu-pkg-van-enabled").checked;if($("vu-pkg-limo-toggle"))$("vu-pkg-limo-toggle").checked=$("vu-pkg-limo-enabled").checked;updatePackageTotals();
 }
 function pkgRenderCatering(){
