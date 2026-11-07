@@ -76,7 +76,7 @@ function renderPackageCreator(){
  const categories=["Cocktails","Alcohol","Soft Drinks","Food & Snacks","Event services"];const tabs=$("vu-pkg-category-tabs");tabs.replaceChildren();
  const search=$("vu-pkg-search"),selectedOnly=$("vu-pkg-selected-only");if(search&&!search.dataset.wired){search.dataset.wired="1";search.addEventListener("input",()=>renderPackageCreator())}if(selectedOnly&&!selectedOnly.dataset.wired){selectedOnly.dataset.wired="1";selectedOnly.addEventListener("change",()=>renderPackageCreator())}
  for(const cat of categories){const b=el("button",cat===pkgCategory?"active":"",cat);b.type="button";b.onclick=()=>{pkgCategory=cat;renderPackageCreator()};tabs.append(b);}
- for(const extra of [{id:"vu-room-hire",name:"Room / venue hire",kind:"special"}])items.push(extra);
+ if(!items.some(x=>/venue|room/i.test(x.name)))items.push({id:"vu-room-hire",name:"Room / venue hire",kind:"special"});
  for(const snack of [{id:"vu-hotdog",name:"Hot dog",category:"Food & Snacks"},{id:"vu-chips",name:"Chips / fries",category:"Food & Snacks"},{id:"vu-snack-platter",name:"Snack platter",category:"Food & Snacks"}])if(!items.some(x=>x.name.toLowerCase()===snack.name.toLowerCase()))items.push({...snack,kind:"food",price:null});
  for(const item of items){
   const pricing=item.kind==="cocktail"?pkgCocktailPrice(item):item.kind==="special"?{price:0}:packagePrice(item),prev=old.get(item.kind+":"+item.id),entry={...item,price:prev?.price??pricing.price,quantity:prev?.quantity||0};if(item.kind==="special"){entry.price=pkgNum("vu-pkg-room-fee");}packageEntries.push(entry);
@@ -84,6 +84,12 @@ function renderPackageCreator(){
   if(category!==pkgCategory)continue;
   if(search?.value.trim()&&!item.name.toLowerCase().includes(search.value.trim().toLowerCase()))continue;
 
+  if(item.kind==="service"||item.kind==="special"){
+   const card=el("article","vu-package-card vu-service-choice"),head=el("div","vu-package-card-top"),img=el("img","vu-item-icon");img.alt="";pkgApplyImage(img,item);
+   const label=el("strong",null,item.name),toggle=el("button","vu-service-toggle",entry.quantity>0?"✓ Added":"＋ Add service");toggle.type="button";toggle.setAttribute("aria-pressed",String(entry.quantity>0));
+   toggle.onclick=()=>{entry.quantity=entry.quantity?0:1;toggle.textContent=entry.quantity?"✓ Added":"＋ Add service";toggle.setAttribute("aria-pressed",String(entry.quantity>0));card.classList.toggle("vu-pkg-picked",!!entry.quantity);pkgUpdateServiceDetails();updatePackageTotals();};
+   head.append(img,label);card.append(head,toggle);card.classList.toggle("vu-pkg-picked",!!entry.quantity);root.append(card);continue;
+  }
   const card=el("article","vu-package-card"),top=el("div","vu-package-card-top"),image=el("img","vu-item-icon");image.alt=item.name;image.loading="lazy";pkgApplyImage(image,item);
   const info=el("div","vu-package-info");info.append(el("strong",null,item.name));top.append(image,info);
   const priceRow=el("label","vu-package-price-row",item.kind==="special"?"Hire charge ($)":"Quote price ($)"),priceInput=el("input");priceInput.type="number";priceInput.min="0";priceInput.step="0.01";priceInput.value=validPrice(entry.price)?String(entry.price):"";priceInput.setAttribute("aria-label",item.name+" price");
@@ -100,11 +106,12 @@ function pkgUpdateServiceDetails(){
  const root=$("vu-pkg-service-fields"),wrap=$("vu-pkg-service-detail");if(!root||!wrap)return;
  const selected=packageEntries.filter(x=>(x.kind==="service"||x.kind==="special")&&x.quantity>0);wrap.hidden=!selected.length;
  const panels=["vu-pkg-room-details"];for(const id of panels){const panel=$(id);if(panel){panel.hidden=true;$("vu-pkg-service-parking")?.append(panel);}}root.replaceChildren();for(const item of selected){
-  const row=el("div","vu-pkg-service-row");row.append(el("strong",null,item.name+" × "+item.quantity));
+  const row=el("div","vu-pkg-service-row");row.append(el("strong",null,item.name+" · Booking details"));
+  const priceLabel=el("label",null,"Customer booking charge ($)"),price=el("input");price.type="number";price.min="0";price.step="0.01";price.placeholder="Set booking charge";price.value=validPrice(item.price)?item.price:"";price.oninput=()=>{item.price=price.value===""?null:Number(price.value);if(item.kind==="special")$("vu-pkg-room-fee").value=price.value;updatePackageTotals()};priceLabel.append(price);row.append(priceLabel);
   const opts=el("div","vu-pkg-service-options");const presets=item.id==="vu-room-hire"||/venue|room/i.test(item.name)?["Main venue","Private room","VIP area","Entire venue"]: /dancer/i.test(item.name)?["Standard performance","VIP performance","Private booking","Themed request"]: /dj/i.test(item.name)?["Club set","Private event","Requested genre","Custom playlist"]:item.id==="vu-mobile-bar"?["Van only","VU then off-site","Off-site event"]:item.id==="vu-limousine"?["One-way transfer","Return journey","Hourly hire"]:["Standard","Custom requirements"];
   const choice=el("select"),keyChoice="choice:"+item.id;for(const opt of ["Choose option",...presets])choice.append(new Option(opt,opt==="Choose option"?"":opt));choice.value=pkgServiceNotes[keyChoice]||"";choice.onchange=()=>pkgServiceNotes[keyChoice]=choice.value;opts.append(choice);row.append(opts);
   const label=el("label",null,"Timing, requests or requirements"),input=el("textarea");input.rows=2;input.placeholder="Optional details";
-  if(item.kind==="special"){const panelId="vu-pkg-room-details";const panel=$(panelId);if(panel){panel.hidden=false;row.append(panel);}}const key="vu-pkg-service-note-"+String(item.id).replace(/[^a-z0-9]/gi,"-");input.value=pkgServiceNotes[key]||"";input.oninput=()=>{pkgServiceNotes[key]=input.value};label.append(input);row.append(label);root.append(row);
+  if(item.kind==="special"){const panel=$("vu-pkg-room-details");if(panel){panel.hidden=false;row.append(panel);}}const key="vu-pkg-service-note-"+String(item.id).replace(/[^a-z0-9]/gi,"-");input.value=pkgServiceNotes[key]||"";input.oninput=()=>{pkgServiceNotes[key]=input.value};label.append(input);row.append(label);root.append(row);
  }
 }
 let pkgServiceNotes={},pkgCatering=[];
