@@ -184,7 +184,7 @@ onAuthStateChanged(auth, (user) => {
   if (owner && !appLoaded) {
     appLoaded = true;
     const script = document.createElement("script");
-    script.src = "app.js?v=20261107-package7";
+    script.src = "app.js?v=20261107-final8";
     document.body.append(script);
   }
   if (user && !owner) signOut(auth);
