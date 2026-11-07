@@ -53,3 +53,24 @@
 #experiences{padding-top:44px}
 @media(max-width:950px){.hero{grid-template-columns:1fr;gap:30px;padding:48px 6vw 42px}.hero-inner{max-width:700px}.hero .neon{font-size:clamp(48px,8.5vw,78px)}.hero>.hero-photo-panel,.hero>.hero-photo-panel.has-photo{height:clamp(300px,48vw,440px);min-height:300px}}
 @media(max-width:580px){.hero{padding:34px 20px 36px;gap:26px}.hero .neon{font-size:clamp(44px,11.8vw,68px)}.hero h1{font-size:29px}.hero>.hero-photo-panel,.hero>.hero-photo-panel.has-photo{height:265px;min-height:265px;border-radius:15px!important}.hero-photo-panel.has-photo .hero-photo-caption{font-size:12px;padding:35px 16px 15px}#experiences{padding-top:35px}}
+
+/* Streamlined customer site: four purposeful sections with room to breathe. */
+.hero{min-height:530px;grid-template-columns:minmax(0,.88fr) minmax(0,1.12fr);background:radial-gradient(ellipse at 65% 30%,#35203b 0%,#19111f 53%,#100d17 86%)}
+.hero-inner{max-width:540px}
+.hero .vu-hero-title{font-size:clamp(54px,5.8vw,94px);line-height:1.02;letter-spacing:-.065em;font-weight:850;margin:20px 0 22px}
+.vu-hero-title em{color:var(--pink);font-style:normal}
+.hero .lead{font-size:16px;max-width:470px}
+.hero .micro{letter-spacing:.035em;font-size:11px}
+.vu-offerings{max-width:1250px}
+.vu-offerings .section-head{max-width:760px}
+.vu-offerings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 48px;border-top:1px solid var(--line)}
+.vu-offerings-grid article{padding:28px 8px 26px 0;border-bottom:1px solid var(--line)}
+.vu-offerings-grid article span{color:var(--pink);font-size:10px;letter-spacing:.19em;font-weight:800}
+.vu-offerings-grid h3{font-size:21px;letter-spacing:-.025em;margin:10px 0}
+.vu-offerings-grid p{font-size:14px;line-height:1.7;margin:0}
+.vu-offerings-note{font-size:13px;margin:25px 0 0}
+#events .section-head,#memories .section-head{max-width:760px}
+#contact{padding-top:80px;padding-bottom:95px}
+#contact p{max-width:650px;margin:16px auto}
+@media(max-width:950px){.hero{grid-template-columns:1fr}.hero .vu-hero-title{font-size:clamp(53px,9vw,85px)}}
+@media(max-width:600px){.hero .vu-hero-title{font-size:clamp(48px,12vw,68px)}.vu-offerings-grid{grid-template-columns:1fr}.vu-offerings-grid article{padding:22px 0}.vu-offerings-grid h3{font-size:19px}#contact{padding-top:55px;padding-bottom:65px}}
