@@ -320,11 +320,19 @@ function setupVehicleManagement(){
  document.addEventListener("vu:vehicles-error",e=>{$("vehicle-status").textContent="Error: "+e.detail});
  document.dispatchEvent(new Event("vu:vehicles-ready"));
 }
+(function(){const $g=id=>document.getElementById(id),file=$g("gallery-file"),url=$g("gallery-url"),preview=$g("gallery-preview"),status=$g("gallery-status"),list=$g("gallery-list");if(!file)return;
+const show=()=>{preview.style.display=url.value?"block":"none";if(url.value)preview.src=url.value;};url.oninput=show;
+async function photo(blob){const bitmap=await createImageBitmap(blob),scale=Math.min(1,900/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement("canvas");canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale);canvas.getContext("2d").drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();const result=canvas.toDataURL("image/jpeg",.55);if(result.length>260000)throw Error("Photo too large; crop it or use an image URL.");url.value=result;show();}
+file.onchange=async()=>{try{if(file.files[0])await photo(file.files[0]);}catch(e){status.textContent=e.message;}};
+const paste=$g("gallery-paste");paste.onclick=()=>paste.focus();paste.onpaste=async e=>{const blob=Array.from(e.clipboardData?.items||[]).find(x=>x.type.startsWith("image/"))?.getAsFile();if(blob){e.preventDefault();try{await photo(blob);}catch(err){status.textContent=err.message;}}};
+$g("gallery-save").onclick=()=>{const image=url.value.trim(),caption=$g("gallery-caption").value.trim();if(!image||image.length>270000||(!image.startsWith("https://")&&!image.startsWith("data:image/jpeg;base64,"))){status.textContent="Choose a valid photo.";return;}status.textContent="Publishing…";document.dispatchEvent(new CustomEvent("vu:gallery-save",{detail:{image,caption}}));};
+document.addEventListener("vu:gallery-updated",e=>{list.replaceChildren();for(const x of e.detail){const row=document.createElement("div");row.className="item";const img=document.createElement("img");img.src=x.image;img.alt=x.caption||"Club photo";img.style.cssText="width:100px;height:70px;object-fit:cover";const label=document.createElement("span");label.textContent=x.caption||"Club photo";const del=document.createElement("button");del.textContent="Remove";del.onclick=()=>{if(confirm("Remove photo?"))document.dispatchEvent(new CustomEvent("vu:gallery-delete",{detail:x.id}));};row.append(img,label,del);list.append(row);}if(!e.detail.length)list.textContent="No photos yet.";});
+document.addEventListener("vu:gallery-saved",()=>{status.textContent="Photo published.";url.value="";file.value="";show();});document.addEventListener("vu:gallery-error",e=>status.textContent=e.detail);document.dispatchEvent(new Event("vu:gallery-ready"));})();
 // Main navigation and nested settings sections.
 setupVehicleManagement();
 (function(){
  const primary=["overview","recipes","transactions","packages","tips","calendar","settings"];
- const nested=["staff","costing","pricing","limo","events","package-media","incidents"];
+ const nested=["staff","costing","pricing","limo","events","package-media","gallery","incidents"];
  const settingsContent=document.getElementById("settings-content");
  nested.forEach(id=>{const node=document.getElementById(id);if(node){node.classList.add("settings-panel");settingsContent.append(node);}});
  const nav=[...document.querySelectorAll("nav [data-tab]")];

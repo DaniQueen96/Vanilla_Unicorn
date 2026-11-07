@@ -80,6 +80,10 @@ document.addEventListener("vu:save-price",async event=>{
 });
 
 
+const galleryCollection=collection(db,"publicGallery");let galleryStop=null;
+document.addEventListener("vu:gallery-ready",()=>{if(!galleryStop)galleryStop=onSnapshot(galleryCollection,s=>document.dispatchEvent(new CustomEvent("vu:gallery-updated",{detail:s.docs.map(d=>({id:d.id,...d.data()}))})),e=>document.dispatchEvent(new CustomEvent("vu:gallery-error",{detail:e.message})));});
+document.addEventListener("vu:gallery-save",async e=>{if(auth.currentUser?.uid!==OWNER_UID)return;const {image,caption}=e.detail||{};if(typeof image!=="string"||image.length>270000||typeof caption!=="string"||caption.length>90)return;try{await addDoc(galleryCollection,{image,caption,createdAt:serverTimestamp()});document.dispatchEvent(new Event("vu:gallery-saved"));}catch(err){document.dispatchEvent(new CustomEvent("vu:gallery-error",{detail:err.message}));}});
+document.addEventListener("vu:gallery-delete",async e=>{if(auth.currentUser?.uid!==OWNER_UID)return;try{await deleteDoc(doc(db,"publicGallery",e.detail));}catch(err){document.dispatchEvent(new CustomEvent("vu:gallery-error",{detail:err.message}));}});
 const vehicleCollection=collection(db,"vuVehicles");
 let vehicleStop=null;
 document.addEventListener("vu:vehicles-ready",()=>{
@@ -201,7 +205,7 @@ onAuthStateChanged(auth, async (user) => {
   if (owner && !appLoaded) {
     appLoaded = true;
     const script = document.createElement("script");
-    script.src = "app.js?v=20261107-pricing7";
+    script.src = "app.js?v=20261107-gallery1";
     document.body.append(script);
   }
   if(user&&!owner){
