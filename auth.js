@@ -201,7 +201,7 @@ onAuthStateChanged(auth, async (user) => {
   if (owner && !appLoaded) {
     appLoaded = true;
     const script = document.createElement("script");
-    script.src = "app.js?v=20261107-fleet4";
+    script.src = "app.js?v=20261107-pricing5";
     document.body.append(script);
   }
   if(user&&!owner){
