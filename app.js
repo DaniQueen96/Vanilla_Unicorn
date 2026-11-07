@@ -97,7 +97,7 @@ function renderPackageCreator(){
 function pkgUpdateServiceDetails(){
  const root=$("vu-pkg-service-fields"),wrap=$("vu-pkg-service-detail");if(!root||!wrap)return;
  const selected=packageEntries.filter(x=>(x.kind==="service"||x.kind==="special")&&x.quantity>0);wrap.hidden=!selected.length;
- const panels=["vu-pkg-van-details","vu-pkg-limo-details","vu-pkg-room-details"];for(const id of panels){const panel=$(id);if(panel)panel.hidden=true;}root.replaceChildren();for(const item of selected){
+ const panels=["vu-pkg-van-details","vu-pkg-limo-details","vu-pkg-room-details"];for(const id of panels){const panel=$(id);if(panel){panel.hidden=true;$("vu-pkg-service-parking")?.append(panel);}}root.replaceChildren();for(const item of selected){
   const row=el("div","vu-pkg-service-row");row.append(el("strong",null,item.name+" × "+item.quantity));
   const opts=el("div","vu-pkg-service-options");const presets=item.id==="vu-room-hire"||/venue|room/i.test(item.name)?["Main venue","Private room","VIP area","Entire venue"]: /dancer/i.test(item.name)?["Standard performance","VIP performance","Private booking","Themed request"]: /dj/i.test(item.name)?["Club set","Private event","Requested genre","Custom playlist"]:item.id==="vu-mobile-bar"?["Van only","VU then off-site","Off-site event"]:item.id==="vu-limousine"?["One-way transfer","Return journey","Hourly hire"]:["Standard","Custom requirements"];
   const choice=el("select"),keyChoice="choice:"+item.id;for(const opt of ["Choose option",...presets])choice.append(new Option(opt,opt==="Choose option"?"":opt));choice.value=pkgServiceNotes[keyChoice]||"";choice.onchange=()=>pkgServiceNotes[keyChoice]=choice.value;opts.append(choice);row.append(opts);
