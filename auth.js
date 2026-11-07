@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, getDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, updatePassword } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
 // Firebase web app identifiers are public; passwords and admin credentials are never stored here.
@@ -84,6 +84,8 @@ const galleryCollection=collection(db,"publicGallery");let galleryStop=null;
 document.addEventListener("vu:gallery-ready",()=>{if(!galleryStop)galleryStop=onSnapshot(galleryCollection,s=>document.dispatchEvent(new CustomEvent("vu:gallery-updated",{detail:s.docs.map(d=>({id:d.id,...d.data()}))})),e=>document.dispatchEvent(new CustomEvent("vu:gallery-error",{detail:e.message})));});
 document.addEventListener("vu:gallery-save",async e=>{if(auth.currentUser?.uid!==OWNER_UID)return;const {image,caption}=e.detail||{};if(typeof image!=="string"||image.length>270000||typeof caption!=="string"||caption.length>90)return;try{await addDoc(galleryCollection,{image,caption,createdAt:serverTimestamp()});document.dispatchEvent(new Event("vu:gallery-saved"));}catch(err){document.dispatchEvent(new CustomEvent("vu:gallery-error",{detail:err.message}));}});
 document.addEventListener("vu:gallery-delete",async e=>{if(auth.currentUser?.uid!==OWNER_UID)return;try{await deleteDoc(doc(db,"publicGallery",e.detail));}catch(err){document.dispatchEvent(new CustomEvent("vu:gallery-error",{detail:err.message}));}});
+document.addEventListener("vu:gallery-edit",async e=>{if(auth.currentUser?.uid!==OWNER_UID)return;const {id,caption}=e.detail||{};if(typeof id!=="string"||typeof caption!=="string"||caption.length>90)return;try{await setDoc(doc(db,"publicGallery",id),{caption},{merge:true});document.dispatchEvent(new CustomEvent("vu:gallery-changed",{detail:"Caption saved."}));}catch(err){document.dispatchEvent(new CustomEvent("vu:gallery-error",{detail:err.message}));}});
+document.addEventListener("vu:gallery-reorder",async e=>{if(auth.currentUser?.uid!==OWNER_UID)return;const ids=e.detail;if(!Array.isArray(ids)||ids.length>450||new Set(ids).size!==ids.length||ids.some(id=>typeof id!=="string"||!id))return;try{const batch=writeBatch(db);ids.forEach((id,index)=>batch.update(doc(db,"publicGallery",id),{order:index}));await batch.commit();document.dispatchEvent(new CustomEvent("vu:gallery-changed",{detail:"Photo order saved."}));}catch(err){document.dispatchEvent(new CustomEvent("vu:gallery-error",{detail:err.message}));}});
 const vehicleCollection=collection(db,"vuVehicles");
 let vehicleStop=null;
 document.addEventListener("vu:vehicles-ready",()=>{
@@ -205,7 +207,7 @@ onAuthStateChanged(auth, async (user) => {
   if (owner && !appLoaded) {
     appLoaded = true;
     const script = document.createElement("script");
-    script.src = "app.js?v=20261107-gallery6";
+    script.src = "app.js?v=20261107-gallery7";
     document.body.append(script);
   }
   if(user&&!owner){
