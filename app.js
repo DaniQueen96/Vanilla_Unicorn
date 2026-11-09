@@ -499,7 +499,7 @@ function setupOrderCalculator(data){
  discountInput?.addEventListener("input",calculate);
  discountInput?.addEventListener("change",()=>{discountInput.value=String(discountPercent());calculate();});
  $id("order-discount-clear")?.addEventListener("click",()=>{discountInput.value="0";calculate();});
- const clearOrder=()=>{entries.forEach(e=>e.qty=0);root.querySelectorAll(".vu-qty-value").forEach(e=>e.textContent="0");if(discountInput)discountInput.value="0";calculate();};
+ const clearOrder=()=>{entries.forEach(e=>e.qty=0);root.querySelectorAll(".vu-qty-value").forEach(e=>e.value="0");if(discountInput)discountInput.value="0";calculate();};
  document.addEventListener("vu:clear-order",clearOrder);
  $id("vu-order-paid")?.addEventListener("click",()=>{
   const selected=lines();
@@ -528,7 +528,7 @@ function setupOrderCalculator(data){
    const identity=el("div","vu-order-identity");identity.append(picture(item),el("strong",null,item.name));
    const priceDisplay=el("span","vu-order-price");
    const minus=el("button","vu-qty-btn","−"),plus=el("button","vu-qty-btn","+");minus.type=plus.type="button";minus.setAttribute("aria-label","Remove one "+item.name);plus.setAttribute("aria-label","Add one "+item.name);
-   const qty=el("span","vu-qty-value","0");const controls=el("div","vu-qty-controls");controls.append(minus,qty,plus);
+   const qty=el("input","vu-qty-value");qty.type="number";qty.min="0";qty.max="99999";qty.step="1";qty.inputMode="numeric";qty.value="0";qty.setAttribute("aria-label",item.name+" quantity");const controls=el("div","vu-qty-controls");controls.append(minus,qty,plus);
    row.append(identity,priceDisplay,controls);panel.append(row);
    const priceRow=el("div","vu-order-item vu-pricing-item");const priceIdentity=el("div","vu-order-identity");priceIdentity.append(picture(item),el("strong",null,item.name));
    const label=el("label",null,"Confirmed selling price ($) — used for customer bills");const price=el("input");price.type="number";price.min="0";price.step="0.01";price.placeholder="Not yet confirmed — apply suggestion or enter price";price.setAttribute("aria-label",item.name+" selling price");
@@ -573,8 +573,11 @@ function setupOrderCalculator(data){
    }
    ppanel.append(priceRow);
    const entry={item,group,key,row,price,priceDisplay,qty:0,pricingControls,cardPrice};entries.push(entry);
-   const change=delta=>{entry.qty=Math.max(0,entry.qty+delta);qty.textContent=String(entry.qty);calculate();};
+   const clampQty=value=>Math.min(99999,Math.max(0,Math.floor(Number(value)||0)));
+   const change=delta=>{entry.qty=clampQty(entry.qty+delta);qty.value=String(entry.qty);calculate();};
    minus.onclick=()=>change(-1);plus.onclick=()=>change(1);
+   qty.addEventListener("input",()=>{if(qty.value===""||qty.value==="-")return;entry.qty=clampQty(qty.value);calculate();});
+   qty.addEventListener("change",()=>{entry.qty=clampQty(qty.value);qty.value=String(entry.qty);calculate();});
    price.addEventListener("input",()=>{const p=Number(price.value);if(price.value!==""&&Number.isFinite(p)&&p>=0)saved[key]=p;else delete saved[key];calculate();});
    price.addEventListener("change",()=>{const raw=price.value.trim(),p=Number(raw);if(raw!==""&&(!Number.isFinite(p)||p<0))return;const value=raw===""?null:p;saved[key]=value;const status=$id("pricing-status");if(status)status.textContent="Saving selling price…";document.dispatchEvent(new CustomEvent("vu:save-price",{detail:{key,value}}));calculate();});
   }
