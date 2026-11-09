@@ -124,6 +124,17 @@ function renderPackageCreator(){
  const bookingType=$("vu-pkg-booking-type")?.value||"venue";
  const categories=bookingType==="limo"?["Event services"]:bookingType==="mobile"?["Cocktails","Alcohol","Soft Drinks","Food & Snacks"]:["Cocktails","Alcohol","Soft Drinks","Food & Snacks","Event services"];
  if(!categories.includes(pkgCategory))pkgCategory=categories[0];
+ const vanSection=$("vu-pkg-van-toggle")?.closest("label"),limoSection=$("vu-pkg-limo-toggle")?.closest("label");
+ const vehicleTitle=document.querySelector(".vu-pkg-extra-toggles")?.previousElementSibling;
+ const vehicleHint=vehicleTitle?.nextElementSibling;
+ if(vanSection)vanSection.hidden=bookingType==="limo";
+ if(limoSection)limoSection.hidden=bookingType==="mobile";
+ if(vehicleTitle)vehicleTitle.hidden=bookingType==="mobile"||bookingType==="limo";
+ if(vehicleHint)vehicleHint.hidden=bookingType==="mobile"||bookingType==="limo";
+ const vanDetails=$("vu-pkg-van-details"),limoDetails=$("vu-pkg-limo-details");
+ if(vanDetails)vanDetails.hidden=bookingType==="limo"||!$("vu-pkg-van-enabled")?.checked;
+ if(limoDetails)limoDetails.hidden=bookingType==="mobile"||!$("vu-pkg-limo-enabled")?.checked;
+
  const guidance=$("vu-pkg-build-guidance");
  if(guidance)guidance.textContent=bookingType==="mobile"?"Off-site cocktail van hire: choose drinks and catering only if the customer wants them. Van hire details are below.":bookingType==="limo"?"Limousine hire: configure the vehicle and journey below. Drinks are not required.":bookingType==="combined"?"Build the Vanilla Unicorn event and the external cocktail van hire together.":"Build the Vanilla Unicorn event using only the services the customer wants.";const tabs=$("vu-pkg-category-tabs");tabs.replaceChildren();
  const search=$("vu-pkg-search"),selectedOnly=$("vu-pkg-selected-only");if(search&&!search.dataset.wired){search.dataset.wired="1";search.addEventListener("input",()=>renderPackageCreator())}if(selectedOnly&&!selectedOnly.dataset.wired){selectedOnly.dataset.wired="1";selectedOnly.addEventListener("change",()=>renderPackageCreator())}
