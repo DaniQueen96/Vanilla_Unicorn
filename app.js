@@ -37,6 +37,13 @@ let packageImages={};
 function pkgImageKey(item){return item.kind+":"+item.id}
 function pkgImageFor(item){return packageImages[pkgImageKey(item)]||""}
 function pkgApplyImage(img,item){
+ // Piña Colada uses the exact owner-supplied image URL, not an inferred item filename.
+ if(String(item.id||"")==="pi_a_colada"||String(item.id||"")==="pina_colada"||String(item.name||"").toLowerCase()==="piña colada"){
+  img.classList.remove("vu-pkg-photo-placeholder");
+  img.src="https://p17.admin.opfw.me/images/icons/items/pina_colada.png";
+  img.onerror=()=>{console.error("Piña Colada image failed to load:",img.src);};
+  return;
+ }
  const custom=pkgImageFor(item);
  const rawId=String(item.id||item.name).trim();
  const normalized=rawId.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
