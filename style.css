@@ -344,3 +344,6 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 .vu-qty-controls input.vu-qty-value{width:3.6rem;min-width:3.6rem;max-width:3.6rem;text-align:center;padding:6px 3px;border:1px solid rgba(226,144,184,.32);border-radius:8px;background:rgba(21,12,25,.65);color:inherit;font:inherit;font-weight:700;appearance:textfield;-moz-appearance:textfield}
 .vu-qty-controls input.vu-qty-value::-webkit-inner-spin-button,.vu-qty-controls input.vu-qty-value::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .vu-qty-controls input.vu-qty-value:focus-visible{outline:2px solid #f58fbd;outline-offset:2px}
+
+/* Package builder: editable quantities and clear first-step enquiry */
+.vu-pkg-quantity{width:3.6rem!important;min-width:3.6rem;text-align:center;padding:.4rem .2rem!important;font-weight:700;color:inherit;background:transparent;border:1px solid rgba(255,160,214,.32);border-radius:8px;appearance:textfield;-moz-appearance:textfield}.vu-pkg-quantity::-webkit-inner-spin-button,.vu-pkg-quantity::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.vu-pkg-stage[hidden]{display:none!important}.vu-pkg-stage[data-pkg-panel="plan"] .vu-plan-fields{margin-bottom:1rem}.vu-pkg-stage[data-pkg-panel="plan"] h3{margin-top:1.2rem}
