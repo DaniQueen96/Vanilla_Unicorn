@@ -176,3 +176,23 @@
 #hero-photo-panel .hero-nav,#hero-photo-panel .hero-nav:hover,#hero-photo-panel .hero-nav:focus,#hero-photo-panel .hero-nav:focus-visible,#hero-photo-panel .hero-nav:active{top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;line-height:1;padding:0;border:0;box-shadow:none;outline:none}
 #hero-photo-panel .hero-nav:hover{background:rgba(12,7,17,.48)}
 #hero-photo-panel .hero-nav:focus-visible{box-shadow:inset 0 0 0 2px #f4a0d3}
+
+/* Compact customer menu showcase and accessible full-size viewer */
+.vu-menu-feature{display:flex;align-items:center;justify-content:space-between;gap:24px;margin:20px 0;padding:24px 28px;border:1px solid rgba(215,157,179,.32);border-radius:18px;background:linear-gradient(115deg,rgba(65,25,48,.48),rgba(19,13,24,.85));box-shadow:inset 0 1px rgba(255,255,255,.05)}
+.vu-menu-feature-copy h3{margin:5px 0 7px;font-family:Georgia,serif;font-size:clamp(1.3rem,2vw,1.85rem);font-weight:normal;color:#f6e9e8}
+.vu-menu-feature-copy p{margin:0;color:#d7c6cf;max-width:540px;line-height:1.5}
+.vu-menu-feature .btn{white-space:nowrap;flex-shrink:0}
+.vu-menu-dialog{position:fixed;inset:4vh 4vw;max-width:1150px;width:92vw;max-height:92vh;margin:auto;padding:22px;border:1px solid #a66a82;border-radius:18px;background:#130e17;color:#f6e9ee;box-shadow:0 28px 90px rgba(0,0,0,.8);overflow:auto}
+.vu-menu-dialog::backdrop{background:rgba(7,4,9,.85);backdrop-filter:blur(6px)}
+.vu-menu-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.vu-menu-dialog-head h2{font-family:Georgia,serif;font-weight:normal;margin:4px 0 12px}
+#vu-menu-close,.vu-menu-choices button{border:1px solid #83536c;background:#251623;color:#f7eaf0;padding:10px 15px;border-radius:10px;cursor:pointer}
+.vu-menu-choices{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 18px}
+.vu-menu-choices button.active{background:#713453;border-color:#e9a6c7}
+.vu-menu-display{min-height:180px;display:grid;place-items:center;border-radius:12px;background:#09070b;overflow:hidden}
+.vu-menu-display img{width:100%;height:auto;max-height:65vh;object-fit:contain;display:block}
+.vu-menu-display img[hidden]{display:none}
+.vu-menu-display p{padding:30px;text-align:center;color:#d8c4cf}
+.vu-menu-full-image{display:inline-block;margin-top:14px;color:#f4c4d9;text-decoration:underline;text-underline-offset:4px}
+.vu-menu-full-image[hidden]{display:none}
+@media(max-width:650px){.vu-menu-feature{flex-direction:column;align-items:flex-start;padding:20px}.vu-menu-dialog{inset:2vh 2vw;width:96vw;max-height:96vh;padding:15px}.vu-menu-display img{max-height:70vh}}
