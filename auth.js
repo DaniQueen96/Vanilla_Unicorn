@@ -246,7 +246,7 @@ onAuthStateChanged(auth, async (user) => {
     appLoaded = true;
     const script = document.createElement("script");
     script.type = "module";
-    script.src = "app.js?v=20261109-timezones15";
+    script.src = "app.js?v=20261109-free-navigation16";
     script.onerror = () => {
       appLoaded = false;
       const target = document.getElementById("order-categories");
