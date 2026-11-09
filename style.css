@@ -352,3 +352,5 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 
 /* Piña Colada: render the verified local PNG even if an old image fallback rewrites img.src. */
 img.vu-recipe-image[alt="Piña Colada cocktail"]{content:url("assets/pina-colada.png?v=20261109-pina-final")!important;}
+
+.vu-pkg-time-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem;margin:.8rem 0 1rem}.vu-pkg-time-grid>div{display:flex;flex-direction:column;gap:.15rem;padding:.65rem .8rem;border:1px solid rgba(245,142,202,.22);border-radius:9px;background:rgba(255,255,255,.025)}.vu-pkg-time-grid span{opacity:.75;font-size:.8rem}.vu-pkg-time-grid strong{font-size:.92rem}@media(max-width:600px){.vu-pkg-time-grid{grid-template-columns:1fr}}
