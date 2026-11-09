@@ -37,15 +37,18 @@ let packageImages={};
 function pkgImageKey(item){return item.kind+":"+item.id}
 function pkgImageFor(item){return packageImages[pkgImageKey(item)]||""}
 function pkgApplyImage(img,item){
- // Same direct item-icon loading approach as the working drinks list.
  const id=String(item.id||item.name||"");
- const name=String(item.name||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
- const key=id.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
- const file=name==="pinacolada"||key==="pinacolada"?"pina_colada":id.toLowerCase().replace(/-/g,"_");
+ const normalize=value=>String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+ const isPina=normalize(item.name)==="pinacolada"||normalize(id)==="pinacolada";
  img.classList.remove("vu-pkg-photo-placeholder");
- // Piña Colada must not inherit an old/broken saved image override.
- img.src=file==="pina_colada"?"assets/pina-colada.png":pkgImageFor(item)||"https://p17.admin.opfw.me/images/icons/items/"+encodeURIComponent(file)+".png";
- img.onerror=()=>{if(file==="pina_colada"&&!img.dataset.pinaFallback){img.dataset.pinaFallback="1";img.src="https://p17.admin.opfw.me/images/icons/items/pina_colada.png";return;}img.onerror=null;img.src="assets/vu-unicorn.svg";img.classList.add("vu-pkg-photo-placeholder");};
+ if(isPina){
+  // Use the exact supplied URL; do not replace it with a unicorn on error.
+  img.src="https://p17.admin.opfw.me/images/icons/items/pina_colada.png";
+  img.onerror=()=>console.error("Piña Colada source could not be loaded:",img.currentSrc);
+  return;
+ }
+ img.src=pkgImageFor(item)||"https://p17.admin.opfw.me/images/icons/items/"+encodeURIComponent(id.toLowerCase().replace(/-/g,"_"))+".png";
+ img.onerror=()=>{img.onerror=null;img.src="assets/vu-unicorn.svg";img.classList.add("vu-pkg-photo-placeholder");};
 }
 
 function setupPackageMedia(){
