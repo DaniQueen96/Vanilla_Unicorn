@@ -252,10 +252,8 @@ function render(){if(!data.recipes.length)data.recipes=[{"name":"Whiskey Sour","
  const card=el("article","vu-recipe-card");
  const visual=el("div","vu-recipe-visual");
  const img=el("img","vu-recipe-image");img.alt=r.name+" cocktail";img.loading="lazy";
- const id=(r.id||r.name.toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/_$/,"")).replace("pi_a_colada","pina_colada");
- const imageBase="https://p17.admin.opfw.me/images/icons/items/"+encodeURIComponent(id);
- img.src=imageBase+".png";
- img.onerror=()=>{const tried=Number(img.dataset.tried||0);img.dataset.tried=String(tried+1);if(tried===0){img.src=imageBase+".png?retry=1";}else if(tried===1){img.src=imageBase+".webp";}else if(tried===2){img.src=imageBase+".jpg";}else{img.onerror=null;img.src="assets/vu-unicorn.svg";img.alt="Cocktail image unavailable";visual.classList.add("vu-recipe-image-fallback");}};
+ pkgApplyImage(img,{...r,kind:"cocktail"});
+ img.addEventListener("error",()=>visual.classList.add("vu-recipe-image-fallback"));
  visual.append(img);
  const body=el("div","vu-recipe-body");
  const title=el("h3",null,r.name);
@@ -439,7 +437,7 @@ function setupOrderCalculator(data){
  const $id=id=>document.getElementById(id);
  const money=n=>"$"+Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
  const iconId=item=>String(item.id||item.name).toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"").replace("pi_a_colada","pina_colada");
- const picture=item=>{const img=el("img","vu-item-icon");img.alt=item.name;img.loading="lazy";img.src="https://p17.admin.opfw.me/images/icons/items/"+encodeURIComponent(iconId(item))+".png";img.onerror=()=>{img.onerror=null;img.src="assets/vu-unicorn.svg";};return img;};
+ const picture=item=>{const img=el("img","vu-item-icon");img.alt=item.name;img.loading="lazy";pkgApplyImage(img,{...item,kind:(data.recipes||[]).some(r=>r.name===item.name)?"cocktail":"drink"});return img;};
  root.textContent="Loading bar menu…";const recipes=(data.recipes||[]).map(r=>({id:r.id||iconId(r),name:r.name}));
  const drinks=(data.drinks||[]).map(d=>({id:d.id,name:d.name,price:d.price}));
  const groups=[
