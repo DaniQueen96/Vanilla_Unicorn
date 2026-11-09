@@ -325,7 +325,12 @@ function render(){if(!data.recipes.length)data.recipes=[{"name":"Whiskey Sour","
  const card=el("article","vu-recipe-card");
  const visual=el("div","vu-recipe-visual");
  const img=el("img","vu-recipe-image");img.alt=r.name+" cocktail";img.loading="lazy";
- pkgApplyImage(img,{...r,kind:"cocktail"});
+ if(String(r.name||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z]/g,"")==="pinacolada"){
+  // Same direct URL assignment as the working Bloody Mary recipe.
+  img.src="https://p17.admin.opfw.me/images/icons/items/pina_colada.png";
+ }else{
+  pkgApplyImage(img,{...r,kind:"cocktail"});
+ }
  img.addEventListener("error",()=>visual.classList.add("vu-recipe-image-fallback"));
  visual.append(img);
  const body=el("div","vu-recipe-body");
