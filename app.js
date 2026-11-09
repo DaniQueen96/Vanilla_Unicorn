@@ -524,7 +524,7 @@ function setupOrderCalculator(data){
    const qty=el("span","vu-qty-value","0");const controls=el("div","vu-qty-controls");controls.append(minus,qty,plus);
    row.append(identity,priceDisplay,controls);panel.append(row);
    const priceRow=el("div","vu-order-item vu-pricing-item");const priceIdentity=el("div","vu-order-identity");priceIdentity.append(picture(item),el("strong",null,item.name));
-   const label=el("label",null,"Selling price ($)");const price=el("input");price.type="number";price.min="0";price.step="0.01";price.placeholder="Not set";price.setAttribute("aria-label",item.name+" selling price");
+   const label=el("label",null,"Confirmed selling price ($) — used for customer bills");const price=el("input");price.type="number";price.min="0";price.step="0.01";price.placeholder="Not yet confirmed — apply suggestion or enter price";price.setAttribute("aria-label",item.name+" selling price");
    if(typeof item.price==="number"&&Number.isFinite(item.price))price.value=item.price;
    label.append(price);
    const priceHeader=el("div","vu-price-card-header");
@@ -546,7 +546,7 @@ function setupOrderCalculator(data){
     const stepDown=el("button","vu-qty-btn","−5%"),stepUp=el("button","vu-qty-btn","+5%");
     stepDown.type=stepUp.type="button";
     const suggested=el("div","vu-profit-result");
-    const apply=el("button",null,"Use suggested price");apply.type="button";
+    const apply=el("button",null,"Save suggested price as selling price");apply.type="button";
     const specialLabel=el("label","vu-special-toggle","Use special price");
     const specialOn=el("input");specialOn.type="checkbox";specialLabel.prepend(specialOn);
     const specialPrice=el("input");specialPrice.type="number";specialPrice.min="0";specialPrice.step="0.01";specialPrice.placeholder="Special price";specialPrice.setAttribute("aria-label",item.name+" special selling price");
@@ -589,7 +589,7 @@ function setupOrderCalculator(data){
   for(const e of entries){
    const p=activePrice(e),special=saved["__specialActive::"+e.key];
    const suggestion=suggestedFor(e);
-   e.cardPrice.textContent=Number.isFinite(p)?money(p):suggestion!==null?money(suggestion)+" suggested":"Price not set";
+   e.cardPrice.textContent=Number.isFinite(p)?money(p)+" selling":suggestion!==null?money(suggestion)+" suggested · not saved":"Selling price not set";
    e.priceDisplay.textContent=Number.isFinite(p)&&p>=0?money(p)+(special?" · Special":""):(suggestion!==null?money(suggestion)+" suggested":"Price not set");
    const ui=e.pricingControls?._ui;
    if(ui){
