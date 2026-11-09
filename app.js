@@ -493,13 +493,19 @@ function setupOrderCalculator(data){
   if(Object.keys(updates).length)document.dispatchEvent(new CustomEvent("vu:seed-store-prices",{detail:updates}));
   calculate();
  };
- const clearOrder=()=>{entries.forEach(e=>e.qty=0);root.querySelectorAll(".vu-qty-value").forEach(e=>e.textContent="0");calculate();};
+ const discountInput=$id("order-discount");
+ const discountPercent=()=>Math.min(100,Math.max(0,Number(discountInput?.value)||0));
+ const discountedTotal=subtotal=>Math.round((subtotal*(1-discountPercent()/100)+Number.EPSILON)*100)/100;
+ discountInput?.addEventListener("input",calculate);
+ discountInput?.addEventListener("change",()=>{discountInput.value=String(discountPercent());calculate();});
+ $id("order-discount-clear")?.addEventListener("click",()=>{discountInput.value="0";calculate();});
+ const clearOrder=()=>{entries.forEach(e=>e.qty=0);root.querySelectorAll(".vu-qty-value").forEach(e=>e.textContent="0");if(discountInput)discountInput.value="0";calculate();};
  document.addEventListener("vu:clear-order",clearOrder);
  $id("vu-order-paid")?.addEventListener("click",()=>{
   const selected=lines();
   if(!selected.length){$id("vu-order-paid-message").textContent="Add items before checkout.";return;}
   if(selected.some(e=>!Number.isFinite(activePrice(e)))){$id("vu-order-paid-message").textContent="Some items need a selling price in Settings.";return;}
-  const total=selected.reduce((sum,e)=>sum+activePrice(e)*e.qty,0);
+  const total=discountedTotal(selected.reduce((sum,e)=>sum+activePrice(e)*e.qty,0));
   if(!confirm("Confirm bill paid in city for "+money(total)+"?"))return;
   clearOrder();$id("vu-order-paid-message").textContent="Paid · "+money(total)+" · order completed.";
  });
@@ -609,7 +615,11 @@ function setupOrderCalculator(data){
    if(Number.isFinite(p)&&p>=0)sum+=p*e.qty;else missing=true;
    const line=el("div","vu-order-summary-line");line.append(picture(e.item),el("span",null,e.item.name+" × "+e.qty),el("strong",null,Number.isFinite(p)&&p>=0?money(p*e.qty):"Price missing"));summary.append(line);
   }
-  $id("order-count").textContent=String(count);$id("order-total").textContent=missing?"Incomplete — set prices":money(sum);
+  const discounted=discountedTotal(sum);
+  $id("order-subtotal").textContent=missing?"—":money(sum);
+  $id("order-discount-amount").textContent=missing?"—":"−"+money(sum-discounted);
+  $id("order-final").textContent=missing?"—":money(discounted);
+  $id("order-count").textContent=String(count);$id("order-total").textContent=missing?"Incomplete — set prices":money(discounted);
   if(!count)summary.append(el("p","muted","No items selected yet."));
  }
  $id("order-search").addEventListener("input",()=>{
@@ -621,7 +631,7 @@ function setupOrderCalculator(data){
  $id("order-copy").addEventListener("click",()=>{
   const selected=lines();if(!selected.length){alert("Add items to the order first.");return;}
   if(selected.some(e=>!Number.isFinite(activePrice(e)))){alert("Set prices in Settings → Pricing Management first.");return;}
-  const result="VANILLA UNICORN — ORDER QUOTE\n"+selected.map(e=>e.item.name+" × "+e.qty+" @ "+money(activePrice(e))+" = "+money(activePrice(e)*e.qty)).join("\n")+"\nTOTAL: "+money(selected.reduce((s,e)=>s+activePrice(e)*e.qty,0));
+  const result="VANILLA UNICORN — ORDER QUOTE\n"+selected.map(e=>e.item.name+" × "+e.qty+" @ "+money(activePrice(e))+" = "+money(activePrice(e)*e.qty)).join("\n")+"\nSUBTOTAL: "+money(selected.reduce((s,e)=>s+activePrice(e)*e.qty,0))+"\nDISCOUNT: "+discountPercent()+"% (−"+money(selected.reduce((s,e)=>s+activePrice(e)*e.qty,0)-discountedTotal(selected.reduce((s,e)=>s+activePrice(e)*e.qty,0)))+")"+"\nTOTAL DUE: "+money(discountedTotal(selected.reduce((s,e)=>s+activePrice(e)*e.qty,0)));
   if(navigator.clipboard?.writeText)navigator.clipboard.writeText(result).then(()=>alert("Order copied.")).catch(()=>prompt("Copy your order:",result));else prompt("Copy your order:",result);
  });
  document.addEventListener("vu:prices-updated",event=>{
