@@ -481,15 +481,16 @@ function setupOrderCalculator(data){
  const suggestedFor=e=>{const cost=e.group==="Cocktails"?unitCost(e.item):storeCost(e.item),m=marginFor(e);return cost===null||m<10||m>90?null:Math.ceil((cost/(1-m/100))/5)*5;};
  let pricesLoaded=false,costsLoaded=false,seeded=new Set();
  const seedSuggested=()=>{
-  if(!pricesLoaded||!costsLoaded||!costing?.recipes?.length)return;
+  if(!pricesLoaded||!costsLoaded)return;
   const updates={};
   for(const e of entries){
-   if(e.group!=="Cocktails"||(Object.hasOwn(saved,e.key)&&saved[e.key]!==null)||seeded.has(e.key))continue;
+   if(e.group==="Cocktails"||(Object.hasOwn(saved,e.key)&&saved[e.key]!==null)||seeded.has(e.key))continue;
    const amount=suggestedFor(e);
    if(amount===null)continue;
    seeded.add(e.key);
+   updates[e.key]=amount;
   }
-  // Suggestions are advisory only; never write calculated prices without staff approval.
+  if(Object.keys(updates).length)document.dispatchEvent(new CustomEvent("vu:seed-store-prices",{detail:updates}));
   calculate();
  };
  const clearOrder=()=>{entries.forEach(e=>e.qty=0);root.querySelectorAll(".vu-qty-value").forEach(e=>e.textContent="0");calculate();};
