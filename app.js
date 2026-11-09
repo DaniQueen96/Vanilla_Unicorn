@@ -85,7 +85,7 @@ function setupPackageMedia(){
  document.dispatchEvent(new Event("vu:package-media-ready"));
 }
 let pkgCategory="Cocktails",pkgCustom=[],pkgDraftId=null,pkgDrafts=[],pkgStep="plan";
-const pkgFields=["vu-pkg-booking-type","vu-pkg-customer-type","vu-pkg-business-name","vu-pkg-phone","vu-pkg-contact-method","vu-pkg-contact-details","vu-pkg-timezone","vu-plan-name","vu-plan-customer","vu-pkg-occasion","vu-plan-guests","vu-plan-guests-max","vu-pkg-start","vu-pkg-end","vu-pkg-location","vu-plan-budget","vu-pkg-requests","vu-plan-discount","vu-pkg-room-fee","vu-pkg-room-expenses","vu-pkg-van-colour","vu-pkg-van-location","vu-pkg-limo-colour","vu-pkg-limo-route","vu-pkg-limo-requests","vu-pkg-event-theme","vu-pkg-event-style","vu-pkg-van-enabled","vu-pkg-van-fee","vu-pkg-van-hours","vu-pkg-van-cost","vu-pkg-van-expenses","vu-pkg-limo-enabled","vu-pkg-limo-fee","vu-pkg-limo-hours","vu-pkg-limo-expenses","vu-pkg-extra-cost","vu-pkg-adjustment","vu-pkg-bartenders","vu-pkg-dancers","vu-pkg-djs","vu-pkg-security","vu-pkg-drivers","vu-pkg-status","vu-pkg-itinerary","vu-pkg-checklist"];
+const pkgFields=["vu-pkg-booking-type","vu-pkg-customer-type","vu-pkg-business-name","vu-pkg-phone","vu-pkg-contact-method","vu-pkg-contact-details","vu-pkg-timezone","vu-pkg-limo-driver-mode","vu-plan-name","vu-plan-customer","vu-pkg-occasion","vu-plan-guests","vu-plan-guests-max","vu-pkg-start","vu-pkg-end","vu-pkg-location","vu-plan-budget","vu-pkg-requests","vu-plan-discount","vu-pkg-room-fee","vu-pkg-room-expenses","vu-pkg-van-colour","vu-pkg-van-location","vu-pkg-limo-colour","vu-pkg-limo-route","vu-pkg-limo-requests","vu-pkg-event-theme","vu-pkg-event-style","vu-pkg-van-enabled","vu-pkg-van-fee","vu-pkg-van-hours","vu-pkg-van-cost","vu-pkg-van-expenses","vu-pkg-limo-enabled","vu-pkg-limo-fee","vu-pkg-limo-hours","vu-pkg-limo-expenses","vu-pkg-extra-cost","vu-pkg-adjustment","vu-pkg-bartenders","vu-pkg-dancers","vu-pkg-djs","vu-pkg-security","vu-pkg-drivers","vu-pkg-status","vu-pkg-itinerary","vu-pkg-checklist"];
 const pkgNum=id=>Number($(id)?.value||0)||0;
 function pkgTotals(){
  const unpriced=packageEntries.filter(x=>x.quantity>0&&x.kind!=="special"&&!validPrice(x.price));
@@ -225,7 +225,14 @@ function pkgTimezonePreview(){
   const check=formatter.formatToParts(new Date(instant));const values=Object.fromEntries(check.filter(x=>x.type!=="literal").map(x=>[x.type,Number(x.value)]));
   if(Date.UTC(values.year,values.month-1,values.day,values.hour,values.minute)!==wall){out.textContent="This local time may be skipped or repeated by daylight-saving changes. Please confirm the time with the customer.";return;}
   const uk=new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/London",dateStyle:"medium",timeStyle:"short"}).format(new Date(instant));
-  out.textContent="Event time: "+start.replace("T"," ")+" ("+zone+") · UK time: "+uk;
+  const cities=[["UK","Europe/London"],["Finland","Europe/Helsinki"],["US Eastern","America/New_York"],["US Central","America/Chicago"],["US Mountain","America/Denver"],["US Pacific","America/Los_Angeles"],["UTC","UTC"]];
+  const formatTime=(tz)=>{const local=new Intl.DateTimeFormat("en-GB",{timeZone:tz,weekday:"short",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",hourCycle:"h23",timeZoneName:"short"});return local.format(new Date(instant));};
+  const selectedOffset=formatTime(zone);
+  out.replaceChildren();
+  const heading=document.createElement("strong");heading.textContent="Event starts: "+selectedOffset+" · "+zone;out.append(heading);
+  const grid=document.createElement("div");grid.className="vu-pkg-time-grid";
+  for(const [label,tz] of cities){const row=document.createElement("div");const name=document.createElement("span");name.textContent=label;const value=document.createElement("strong");value.textContent=formatTime(tz);row.append(name,value);grid.append(row);}
+  out.append(grid);
  }catch(e){out.textContent="Please check the event date and time zone.";}
 }
 const pkgSteps=["plan","details","build","price","organise","confirm"];
