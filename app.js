@@ -42,7 +42,8 @@ function pkgApplyImage(img,item){
  const normalized=rawId.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
  const ids=[...new Set([rawId,normalized,normalized==="pi_a_colada"?"pina_colada":normalized])];
  const base="https://p17.admin.opfw.me/images/icons/items/";
- const candidates=[...(custom?[custom]:[]),...ids.flatMap(id=>["png","webp","jpg"].map(ext=>base+encodeURIComponent(id)+"."+ext))];
+ const verifiedPina=normalized==="pi_a_colada"||normalized==="pina_colada"?"https://p17.admin.opfw.me/images/icons/items/pina_colada.png":null;
+ const candidates=[...(custom?[custom]:[]),...(verifiedPina?[verifiedPina]:[]),...ids.flatMap(id=>["png","webp","jpg"].map(ext=>base+encodeURIComponent(id)+"."+ext))];
  let attempt=0;
  img.classList.remove("vu-pkg-photo-placeholder");
  img.src=candidates[0];
