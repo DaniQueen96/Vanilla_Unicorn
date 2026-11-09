@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, getDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, getDoc, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, updatePassword } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
 // Firebase web app identifiers are public; passwords and admin credentials are never stored here.
@@ -66,6 +66,25 @@ document.addEventListener("vu:seed-prices",async event=>{
   await setDoc(pricingDoc,{prices:valid},{merge:true});
   if(status)status.textContent="Calculated cocktail prices saved for all devices.";
  }catch(error){if(status)status.textContent="Automatic price saving failed: "+error.message;}
+});
+// Automatically initialise missing non-cocktail selling prices once; never replace saved choices.
+let autoPriceSeedRunning=false;
+document.addEventListener("vu:seed-store-prices",async event=>{
+ if(auth.currentUser?.uid!==OWNER_UID||autoPriceSeedRunning)return;
+ const candidates=event.detail;
+ if(!candidates||typeof candidates!=="object")return;
+ const valid=Object.fromEntries(Object.entries(candidates).filter(([key,value])=>key.includes("::")&&!key.startsWith("Cocktails::")&&typeof value==="number"&&Number.isFinite(value)&&value>=0));
+ if(!Object.keys(valid).length)return;
+ autoPriceSeedRunning=true;
+ try{
+  await runTransaction(db,async transaction=>{
+   const snapshot=await transaction.get(pricingDoc);
+   const existing=snapshot.exists()?(snapshot.data().prices||{}):{};
+   const missing=Object.fromEntries(Object.entries(valid).filter(([key])=>!Object.hasOwn(existing,key)||existing[key]===null));
+   if(Object.keys(missing).length)transaction.set(pricingDoc,{prices:{...existing,...missing}},{merge:true});
+  });
+ }catch(error){const status=document.getElementById("pricing-status");if(status)status.textContent="Automatic store pricing failed: "+error.message;}
+ finally{autoPriceSeedRunning=false;}
 });
 document.addEventListener("vu:save-price",async event=>{
  if(auth.currentUser?.uid!==OWNER_UID)return;
