@@ -42,8 +42,8 @@ function pkgApplyImage(img,item){
  const pinaId=String(item.id||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
  if(pinaName==="pinacolada"||pinaId==="pinacolada"){
   img.classList.remove("vu-pkg-photo-placeholder");
-  img.src="https://p17.admin.opfw.me/images/icons/items/pina_colada.png";
-  img.onerror=()=>{img.onerror=null;img.src="assets/vu-unicorn.svg";img.classList.add("vu-pkg-photo-placeholder");console.error("Piña Colada image URL failed to load");};
+  img.src="assets/pina-colada.png";
+  img.onerror=()=>{img.onerror=null;img.src="assets/vu-unicorn.svg";img.classList.add("vu-pkg-photo-placeholder");};
   return;
  }
  const custom=pkgImageFor(item);
