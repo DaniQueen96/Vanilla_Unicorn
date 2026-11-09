@@ -330,3 +330,13 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 .vu-discount-breakdown{display:grid;gap:7px;margin-top:12px}
 .vu-discount-breakdown>div{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .vu-discount-breakdown>div:last-child{border-top:1px solid rgba(226,144,184,.25);padding-top:9px;font-weight:700}
+
+.vu-prep-summary{margin-top:16px;padding:14px;border:1px solid rgba(226,144,184,.3);border-radius:12px;background:rgba(18,12,23,.48)}
+.vu-prep-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.vu-prep-heading h3{margin:0;font-size:1.05rem}
+.vu-prep-heading button{padding:8px 11px}
+.vu-prep-note{font-size:.82rem;opacity:.75;margin:7px 0 10px}
+.vu-prep-items{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:6px 12px}
+.vu-prep-items li{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid rgba(226,144,184,.13);font-size:.9rem}
+.vu-prep-items strong{color:#f5a9d2;white-space:nowrap}
+.vu-prep-warning{color:#ffc6ad;font-size:.85rem}
