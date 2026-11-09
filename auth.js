@@ -128,7 +128,7 @@ document.addEventListener("vu:gallery-ready",()=>{
   }catch(err){galleryLegacyChecked=false;document.dispatchEvent(new CustomEvent("vu:gallery-error",{detail:"Older photo migration: "+err.message}));}
  },e=>document.dispatchEvent(new CustomEvent("vu:gallery-error",{detail:e.message})));
 });
-document.addEventListener("vu:gallery-save",async e=>{if(auth.currentUser?.uid!==OWNER_UID)return;const {image,caption,category,description="",collection,albumId="",published=true,consent=false}=e.detail||{};if(typeof image!=="string"||image.length>270000||typeof caption!=="string"||caption.length>90||typeof description!=="string"||description.length>240||!["venue","memories"].includes(collection)||(collection==="memories"&&(!albumId||!consent))||(collection==="venue"&&!["Venue","Events","Entertainment","Drinks & Food","VIP & Parties","Private Rooms"].includes(category)))return;try{
+document.addEventListener("vu:gallery-save",async e=>{if(auth.currentUser?.uid!==OWNER_UID)return;const {image,caption,category,description="",collection,albumId="",published=true,consent=false}=e.detail||{};if(typeof image!=="string"||image.length>270000||typeof caption!=="string"||caption.length>90||typeof description!=="string"||description.length>240||!["venue","memories"].includes(collection)||(collection==="memories"&&(!albumId||!consent))||(collection==="venue"&&!["Venue","Events","Entertainment","Drinks & Food","VIP & Parties","Private Rooms","Menus"].includes(category)))return;try{
  if(collection==="memories"&&published){
   const album=await getDoc(doc(db,"vuMemoryAlbums",albumId));
   if(!album.exists()||album.data().published!==true)throw Error("Publish the album before publishing photos into it.");
