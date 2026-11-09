@@ -236,34 +236,23 @@ function pkgTimezonePreview(){
  }catch(e){out.textContent="Please check the event date and time zone.";}
 }
 const pkgSteps=["plan","details","build","price","organise","confirm"];
-let pkgUnlocked=0;
 function pkgSetStep(step){
  const index=pkgSteps.indexOf(step);
- if(index<0||index>pkgUnlocked)return;
+ if(index<0)return;
  pkgStep=step;
  document.querySelectorAll("[data-pkg-panel]").forEach(x=>x.hidden=x.dataset.pkgPanel!==step);
- document.querySelectorAll("[data-pkg-step]").forEach((x,i)=>{x.hidden=i>pkgUnlocked;x.classList.toggle("active",x.dataset.pkgStep===step);});
+ document.querySelectorAll("[data-pkg-step]").forEach(x=>{x.hidden=false;x.classList.toggle("active",x.dataset.pkgStep===step);});
  $("vu-pkg-back").disabled=index===0;
  $("vu-pkg-next").hidden=index===pkgSteps.length-1;
  const sidebar=document.querySelector(".vu-pkg-sidebar");
- if(sidebar)sidebar.hidden=index<3;
+ if(sidebar)sidebar.hidden=index<2;
 }
 function pkgAdvance(){
  const index=pkgSteps.indexOf(pkgStep);
- if(pkgStep==="plan"){
-  if(!$("vu-pkg-booking-type").value){alert("Choose what the customer would like to book.");return;}
-  if(!$("vu-plan-customer").value.trim()){alert("Enter the customer or contact name.");return;}
-  pkgSyncBookingType();
- }
- if(pkgStep==="details"){
-  if(!$("vu-pkg-start").value||!$("vu-pkg-end").value){alert("Enter the event start and end dates and times.");return;}
-  if(!$("vu-pkg-location").value.trim()){alert("Enter the event location or venue.");return;}
-  if(Number($("vu-plan-guests").value)<1){alert("Enter the expected guest count.");return;}
-  if($("vu-pkg-end").value<=$("vu-pkg-start").value){alert("The event end must be after the start.");return;}
- }
- pkgUnlocked=Math.max(pkgUnlocked,Math.min(pkgSteps.length-1,index+1));
+ if(index<0||index===pkgSteps.length-1)return;
+ if(pkgStep==="plan")pkgSyncBookingType();
  if(pkgStep==="details"){pkgCategory="Cocktails";renderPackageCreator();}
- pkgSetStep(pkgSteps[Math.min(pkgSteps.length-1,index+1)]);
+ pkgSetStep(pkgSteps[index+1]);
 }
 
 function setupPackagePlanner(){
@@ -290,8 +279,8 @@ function setupPackagePlanner(){
  };
  const save=()=>{const payload=pkgSnapshot();const id=pkgDraftId||("pkg-"+Date.now()+"-"+Math.random().toString(36).slice(2,7));pkgDraftId=id;document.dispatchEvent(new CustomEvent("vu:package-save",{detail:{id,...payload}}));$("vu-pkg-save-status").textContent="Saving…";};
  $("vu-pkg-save").onclick=save;$("vu-pkg-save-confirm").onclick=save;
- $("vu-pkg-new").onclick=()=>{pkgDraftId=null;pkgUnlocked=0;pkgLoad({fields:Object.fromEntries(pkgFields.map(id=>[id,$(id)?.type==="checkbox"?false:""])),items:[],custom:[]});$("vu-plan-guests").value=1;$("vu-plan-discount").value=0;$("vu-pkg-occasion").value="Custom event";$("vu-pkg-status").value="Draft";$("vu-pkg-saved").value="";pkgSetStep("plan");};
- $("vu-pkg-saved").onchange=()=>{const d=pkgDrafts.find(x=>x.id===$("vu-pkg-saved").value);if(d){pkgDraftId=d.id;pkgUnlocked=0;pkgLoad(d);pkgSetStep("plan");}};
+ $("vu-pkg-new").onclick=()=>{pkgDraftId=null;pkgLoad({fields:Object.fromEntries(pkgFields.map(id=>[id,$(id)?.type==="checkbox"?false:""])),items:[],custom:[]});$("vu-plan-guests").value=1;$("vu-plan-discount").value=0;$("vu-pkg-occasion").value="Custom event";$("vu-pkg-status").value="Draft";$("vu-pkg-saved").value="";pkgSetStep("plan");};
+ $("vu-pkg-saved").onchange=()=>{const d=pkgDrafts.find(x=>x.id===$("vu-pkg-saved").value);if(d){pkgDraftId=d.id;pkgLoad(d);pkgSetStep("plan");}};
  document.addEventListener("vu:packages-updated",e=>{pkgDrafts=e.detail||[];const sel=$("vu-pkg-saved");sel.replaceChildren(new Option("New package",""));for(const d of pkgDrafts.sort((x,y)=>String(y.updatedAt).localeCompare(String(x.updatedAt))))sel.append(new Option((d.fields?.["vu-plan-name"]||"Untitled")+" · "+(d.fields?.["vu-pkg-status"]||"Draft"),d.id));if(pkgDraftId)sel.value=pkgDraftId;});
  document.addEventListener("vu:package-saved",()=>{$("vu-pkg-save-status").textContent="Saved for your owner account."});
  document.addEventListener("vu:package-error",e=>{$("vu-pkg-save-status").textContent="Save failed: "+e.detail});
