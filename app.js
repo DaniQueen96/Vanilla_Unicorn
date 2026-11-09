@@ -464,7 +464,7 @@ function setupOrderCalculator(data){
  let costing={prices:fallbackPrices,recipes:fallbackRecipes};
  const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
  const getRecipe=item=>costing?.recipes?.find(r=>norm(r.name)===norm(item.name)||norm(r.name).startsWith(norm(item.name)));
- const storeCost=item=>{const prices=costing?.prices||fallbackPrices;const aliases=[item.name,item.id,String(item.name).replace(/^Hotdog$/i,"Hot Dog")];const found=Object.entries(prices).find(([name])=>aliases.some(alias=>norm(alias)===norm(name)));const amount=found?Number(found[1]):NaN;return Number.isFinite(amount)&&amount>=0?amount:null;};
+ const storeCost=item=>{const prices={...fallbackPrices,...(costing?.prices||{})};const aliases=[item.name,item.id,String(item.name).replace(/^Hotdog$/i,"Hot Dog")];const found=Object.entries(prices).find(([name])=>aliases.some(alias=>norm(alias)===norm(name)));const amount=found?Number(found[1]):NaN;return Number.isFinite(amount)&&amount>=0?amount:null;};
  const unitCost=item=>{
   const recipe=getRecipe(item);if(!recipe||!costing?.prices)return null;
   const yieldCount=Number(recipe.yieldCount);if(!Number.isFinite(yieldCount)||yieldCount<=0)return null;
