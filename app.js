@@ -121,7 +121,11 @@ function renderPackageCreator(){
  const root=$("package-options");if(!root)return;
  const old=new Map(packageEntries.map(x=>[x.kind+":"+x.id,x]));root.replaceChildren();packageEntries=[];
  const items=[...data.recipes.map(x=>({...x,id:x.id||x.name,kind:"cocktail"})),...data.drinks.map(x=>({...x,kind:"drink"})),...data.services.map(x=>({...x,kind:"service"}))];
- const categories=["Cocktails","Alcohol","Soft Drinks","Food & Snacks","Event services"];const tabs=$("vu-pkg-category-tabs");tabs.replaceChildren();
+ const bookingType=$("vu-pkg-booking-type")?.value||"venue";
+ const categories=bookingType==="limo"?["Event services"]:bookingType==="mobile"?["Cocktails","Alcohol","Soft Drinks","Food & Snacks"]:["Cocktails","Alcohol","Soft Drinks","Food & Snacks","Event services"];
+ if(!categories.includes(pkgCategory))pkgCategory=categories[0];
+ const guidance=$("vu-pkg-build-guidance");
+ if(guidance)guidance.textContent=bookingType==="mobile"?"Off-site cocktail van hire: choose drinks and catering only if the customer wants them. Van hire details are below.":bookingType==="limo"?"Limousine hire: configure the vehicle and journey below. Drinks are not required.":bookingType==="combined"?"Build the Vanilla Unicorn event and the external cocktail van hire together.":"Build the Vanilla Unicorn event using only the services the customer wants.";const tabs=$("vu-pkg-category-tabs");tabs.replaceChildren();
  const search=$("vu-pkg-search"),selectedOnly=$("vu-pkg-selected-only");if(search&&!search.dataset.wired){search.dataset.wired="1";search.addEventListener("input",()=>renderPackageCreator())}if(selectedOnly&&!selectedOnly.dataset.wired){selectedOnly.dataset.wired="1";selectedOnly.addEventListener("change",()=>renderPackageCreator())}
  for(const cat of categories){const b=el("button",cat===pkgCategory?"active":"",cat);b.type="button";b.onclick=()=>{pkgCategory=cat;renderPackageCreator()};tabs.append(b);}
  if(!items.some(x=>/venue|room/i.test(x.name)))items.push({id:"vu-room-hire",name:"Room / venue hire",kind:"special"});
@@ -129,7 +133,7 @@ function renderPackageCreator(){
  for(const item of items){
   const pricing=item.kind==="cocktail"?pkgCocktailPrice(item):item.kind==="special"?{price:0}:packagePrice(item),prev=old.get(item.kind+":"+item.id),entry={...item,price:prev?.manualPrice?prev.price:pricing.price,manualPrice:prev?.manualPrice||false,quantity:prev?.quantity||0};if(item.kind==="special"){entry.price=pkgNum("vu-pkg-room-fee");}packageEntries.push(entry);
   const category=item.kind==="cocktail"?"Cocktails":(item.kind==="service"||item.kind==="special")?"Event services":(/food|snack|chips|burger|pizza|sandwich|salad|meal|fries|hotdog|chocolate|candy|donut|cake/i.test(item.category||"")?"Food & Snacks":/whiskey|whisky|vodka|rum|tequila|gin|beer|cider|wine|absinthe|bourbon|brandy|champagne|liquor|spirits/i.test(item.name+" "+(item.category||""))?"Alcohol":"Soft Drinks");
-  if(category!==pkgCategory)continue;
+  if(category!==pkgCategory||!categories.includes(category))continue;
   if(search?.value.trim()&&!item.name.toLowerCase().includes(search.value.trim().toLowerCase()))continue;
 
   if(item.kind==="service"||item.kind==="special"){
@@ -209,11 +213,37 @@ function pkgTimezonePreview(){
   out.textContent="Event time: "+start.replace("T"," ")+" ("+zone+") · UK time: "+uk;
  }catch(e){out.textContent="Please check the event date and time zone.";}
 }
+const pkgSteps=["plan","details","build","price","organise","confirm"];
+let pkgUnlocked=0;
 function pkgSetStep(step){
- pkgStep=step;document.querySelectorAll("[data-pkg-panel]").forEach(x=>x.hidden=x.dataset.pkgPanel!==step);
- document.querySelectorAll("[data-pkg-step]").forEach(x=>x.classList.toggle("active",x.dataset.pkgStep===step));
- const steps=["plan","build","price","organise","confirm"],index=steps.indexOf(step);$("vu-pkg-back").disabled=index===0;$("vu-pkg-next").hidden=index===steps.length-1;
+ const index=pkgSteps.indexOf(step);
+ if(index<0||index>pkgUnlocked)return;
+ pkgStep=step;
+ document.querySelectorAll("[data-pkg-panel]").forEach(x=>x.hidden=x.dataset.pkgPanel!==step);
+ document.querySelectorAll("[data-pkg-step]").forEach((x,i)=>{x.hidden=i>pkgUnlocked;x.classList.toggle("active",x.dataset.pkgStep===step);});
+ $("vu-pkg-back").disabled=index===0;
+ $("vu-pkg-next").hidden=index===pkgSteps.length-1;
+ const sidebar=document.querySelector(".vu-pkg-sidebar");
+ if(sidebar)sidebar.hidden=index<3;
 }
+function pkgAdvance(){
+ const index=pkgSteps.indexOf(pkgStep);
+ if(pkgStep==="plan"){
+  if(!$("vu-pkg-booking-type").value){alert("Choose what the customer would like to book.");return;}
+  if(!$("vu-plan-customer").value.trim()){alert("Enter the customer or contact name.");return;}
+  pkgSyncBookingType();
+ }
+ if(pkgStep==="details"){
+  if(!$("vu-pkg-start").value||!$("vu-pkg-end").value){alert("Enter the event start and end dates and times.");return;}
+  if(!$("vu-pkg-location").value.trim()){alert("Enter the event location or venue.");return;}
+  if(Number($("vu-plan-guests").value)<1){alert("Enter the expected guest count.");return;}
+  if($("vu-pkg-end").value<=$("vu-pkg-start").value){alert("The event end must be after the start.");return;}
+ }
+ pkgUnlocked=Math.max(pkgUnlocked,Math.min(pkgSteps.length-1,index+1));
+ if(pkgStep==="details"){pkgCategory="Cocktails";renderPackageCreator();}
+ pkgSetStep(pkgSteps[Math.min(pkgSteps.length-1,index+1)]);
+}
+
 function setupPackagePlanner(){
  const apply=$("vu-pkg-apply-staff");if(apply)apply.onclick=()=>{for(const [id,n] of Object.entries(pkgStaffSuggestion()))if($(id))$(id).value=n;updatePackageTotals()};
  for(const [toggle,actual,panel] of [["vu-pkg-van-toggle","vu-pkg-van-enabled","vu-pkg-van-details"],["vu-pkg-limo-toggle","vu-pkg-limo-enabled","vu-pkg-limo-details"]]){const t=$(toggle);if(t){t.checked=$(actual).checked;t.onchange=()=>{$(actual).checked=t.checked;$(panel).hidden=!t.checked;$(actual).dispatchEvent(new Event("input",{bubbles:true}));};}}
@@ -224,13 +254,13 @@ function setupPackagePlanner(){
  const cocktail=$("vu-pkg-van-cocktail");if(cocktail){for(const item of data.recipes)cocktail.append(new Option(item.name,item.name));cocktail.onchange=()=>{const item=data.recipes.find(x=>x.name===cocktail.value);if(!item)return;$("vu-pkg-custom-name").value=item.name;const p=pkgCocktailPrice(item);if(validPrice(p.price))$("vu-pkg-custom-price").value=p.price;const cost=typeof pkgRecipeUnitCost==="function"?pkgRecipeUnitCost(item):null;if(validPrice(cost)){$("vu-pkg-custom-cost").value=cost.toFixed(2);$("vu-pkg-van-cost-note").textContent="Recipe ingredient cost: "+cash(cost)+" per cocktail, included in package profit calculations.";}else{$("vu-pkg-custom-cost").value="";$("vu-pkg-van-cost-note").textContent="Ingredient cost unavailable: check the Recipe Book costing before confirming profit.";}};}
 
  if(!$("vu-pkg-save"))return;
- const steps=["plan","build","price","organise","confirm"];
+ const steps=pkgSteps;
  document.querySelectorAll("[data-pkg-step]").forEach(b=>b.onclick=()=>pkgSetStep(b.dataset.pkgStep));
  $("vu-pkg-booking-type")?.addEventListener("change",pkgSyncBookingType);
  for(const id of ["vu-pkg-start","vu-pkg-timezone"])$(id)?.addEventListener("change",pkgTimezonePreview);
  pkgTimezonePreview();
  $("vu-pkg-back").onclick=()=>pkgSetStep(steps[Math.max(0,steps.indexOf(pkgStep)-1)]);
- $("vu-pkg-next").onclick=()=>{if(pkgStep==="plan"){if(!$("vu-pkg-booking-type").value){alert("Choose the booking type before continuing.");return;}if(!$("vu-plan-customer").value.trim()){alert("Enter a customer or contact name.");return;}pkgSyncBookingType();}pkgSetStep(steps[Math.min(4,steps.indexOf(pkgStep)+1)]);};
+ $("vu-pkg-next").onclick=pkgAdvance;
  pkgFields.forEach(id=>$(id)?.addEventListener("input",()=>{const van=$("vu-pkg-van-enabled")?.checked,limo=$("vu-pkg-limo-enabled")?.checked;for(const [id,enabled,fee] of [["vu-mobile-bar",van,"vu-pkg-van-fee"],["vu-limousine",limo,"vu-pkg-limo-fee"]]){const entry=packageEntries.find(x=>x.id===id);if(entry){entry.quantity=enabled?1:0;entry.price=pkgNum(fee);}}$("vu-pkg-van-details").hidden=!van;$("vu-pkg-limo-details").hidden=!limo;updatePackageTotals();pkgUpdateServiceDetails();}));
  $("vu-pkg-custom-add").onclick=()=>{
   const name=$("vu-pkg-custom-name").value.trim(),quantity=Math.max(1,Math.floor(pkgNum("vu-pkg-custom-qty"))),price=pkgNum("vu-pkg-custom-price"),cost=pkgNum("vu-pkg-custom-cost");
@@ -238,8 +268,8 @@ function setupPackagePlanner(){
  };
  const save=()=>{const payload=pkgSnapshot();const id=pkgDraftId||("pkg-"+Date.now()+"-"+Math.random().toString(36).slice(2,7));pkgDraftId=id;document.dispatchEvent(new CustomEvent("vu:package-save",{detail:{id,...payload}}));$("vu-pkg-save-status").textContent="Saving…";};
  $("vu-pkg-save").onclick=save;$("vu-pkg-save-confirm").onclick=save;
- $("vu-pkg-new").onclick=()=>{pkgDraftId=null;pkgLoad({fields:Object.fromEntries(pkgFields.map(id=>[id,$(id)?.type==="checkbox"?false:""])),items:[],custom:[]});$("vu-plan-guests").value=1;$("vu-plan-discount").value=0;$("vu-pkg-occasion").value="Custom event";$("vu-pkg-status").value="Draft";$("vu-pkg-saved").value="";pkgSetStep("plan");};
- $("vu-pkg-saved").onchange=()=>{const d=pkgDrafts.find(x=>x.id===$("vu-pkg-saved").value);if(d){pkgDraftId=d.id;pkgLoad(d);pkgSetStep("plan");}};
+ $("vu-pkg-new").onclick=()=>{pkgDraftId=null;pkgUnlocked=0;pkgLoad({fields:Object.fromEntries(pkgFields.map(id=>[id,$(id)?.type==="checkbox"?false:""])),items:[],custom:[]});$("vu-plan-guests").value=1;$("vu-plan-discount").value=0;$("vu-pkg-occasion").value="Custom event";$("vu-pkg-status").value="Draft";$("vu-pkg-saved").value="";pkgSetStep("plan");};
+ $("vu-pkg-saved").onchange=()=>{const d=pkgDrafts.find(x=>x.id===$("vu-pkg-saved").value);if(d){pkgDraftId=d.id;pkgUnlocked=0;pkgLoad(d);pkgSetStep("plan");}};
  document.addEventListener("vu:packages-updated",e=>{pkgDrafts=e.detail||[];const sel=$("vu-pkg-saved");sel.replaceChildren(new Option("New package",""));for(const d of pkgDrafts.sort((x,y)=>String(y.updatedAt).localeCompare(String(x.updatedAt))))sel.append(new Option((d.fields?.["vu-plan-name"]||"Untitled")+" · "+(d.fields?.["vu-pkg-status"]||"Draft"),d.id));if(pkgDraftId)sel.value=pkgDraftId;});
  document.addEventListener("vu:package-saved",()=>{$("vu-pkg-save-status").textContent="Saved for your owner account."});
  document.addEventListener("vu:package-error",e=>{$("vu-pkg-save-status").textContent="Save failed: "+e.detail});
