@@ -38,10 +38,14 @@ function pkgImageKey(item){return item.kind+":"+item.id}
 function pkgImageFor(item){return packageImages[pkgImageKey(item)]||""}
 function pkgApplyImage(img,item){
  const custom=pkgImageFor(item);
- const id=String(item.id||item.name).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"").replace("pi_a_colada","pina_colada");
- const base="https://p17.admin.opfw.me/images/icons/items/"+encodeURIComponent(id);
- const candidates=custom?[custom,base+".png",base+".webp",base+".jpg"]:[base+".png",base+".webp",base+".jpg"];
- let attempt=0;img.classList.remove("vu-pkg-photo-placeholder");img.src=candidates[0];
+ const rawId=String(item.id||item.name).trim();
+ const normalized=rawId.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
+ const ids=[...new Set([rawId,normalized,normalized==="pi_a_colada"?"pina_colada":normalized])];
+ const base="https://p17.admin.opfw.me/images/icons/items/";
+ const candidates=[...(custom?[custom]:[]),...ids.flatMap(id=>["png","webp","jpg"].map(ext=>base+encodeURIComponent(id)+"."+ext))];
+ let attempt=0;
+ img.classList.remove("vu-pkg-photo-placeholder");
+ img.src=candidates[0];
  img.onerror=()=>{attempt++;if(attempt<candidates.length)img.src=candidates[attempt];else{img.onerror=null;img.src="assets/vu-unicorn.svg";img.classList.add("vu-pkg-photo-placeholder");}};
 }
 
