@@ -246,7 +246,7 @@ onAuthStateChanged(auth, async (user) => {
     appLoaded = true;
     const script = document.createElement("script");
     script.type = "module";
-    script.src = "app.js?v=20261109-original-id4";
+    script.src = "app.js?v=20261109-pina-confirmed5";
     script.onerror = () => {
       appLoaded = false;
       const target = document.getElementById("order-categories");
