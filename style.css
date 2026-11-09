@@ -320,3 +320,13 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 #pricing-categories .vu-special-row input[type=checkbox]{appearance:auto;-webkit-appearance:checkbox;flex:0 0 18px;width:18px!important;height:18px!important;min-width:18px!important;margin:0;accent-color:#ec4899}
 #pricing-categories .vu-special-row input[type=number]{width:100%;max-width:none}
 #pricing-categories .vu-margin-steps button{min-width:62px}
+
+/* Customer discounts: clearly separate subtotal from final amount due */
+.vu-order-discount{margin:14px 0;padding:14px;border:1px solid rgba(226,144,184,.27);border-radius:12px;background:rgba(91,41,72,.12)}
+.vu-order-discount>label{display:block;margin-bottom:8px;font-size:.9rem}
+.vu-discount-controls{display:flex;align-items:center;gap:10px}
+.vu-discount-controls input{width:100px;max-width:40%;min-width:0}
+.vu-discount-controls button{white-space:normal}
+.vu-discount-breakdown{display:grid;gap:7px;margin-top:12px}
+.vu-discount-breakdown>div{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.vu-discount-breakdown>div:last-child{border-top:1px solid rgba(226,144,184,.25);padding-top:9px;font-weight:700}
