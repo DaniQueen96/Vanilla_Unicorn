@@ -251,7 +251,7 @@ function render(){if(!data.recipes.length)data.recipes=[{"name":"Whiskey Sour","
  const id=(r.id||r.name.toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/_$/,"")).replace("pi_a_colada","pina_colada");
  const imageBase="https://p17.admin.opfw.me/images/icons/items/"+encodeURIComponent(id);
  img.src=imageBase+".png";
- img.onerror=()=>{if(img.dataset.tried==="1"){img.onerror=null;img.src="assets/vu-unicorn.svg";img.alt="Vanilla Unicorn logo — cocktail image unavailable";visual.classList.add("vu-recipe-image-fallback");}else{img.dataset.tried="1";img.src=imageBase;}};
+ img.onerror=()=>{const tried=Number(img.dataset.tried||0);img.dataset.tried=String(tried+1);if(tried===0){img.src=imageBase+".webp";}else if(tried===1){img.src=imageBase+".jpg";}else if(tried===2&&id==="pina_colada"){img.src="https://p17.admin.opfw.me/images/icons/items/pi_a_colada.png";}else{img.onerror=null;img.src="assets/vu-unicorn.svg";img.alt="Vanilla Unicorn logo — cocktail image unavailable";visual.classList.add("vu-recipe-image-fallback");}};
  visual.append(img);
  const body=el("div","vu-recipe-body");
  const title=el("h3",null,r.name);
@@ -615,6 +615,29 @@ function setupOrderCalculator(data){
    if(Number.isFinite(p)&&p>=0)sum+=p*e.qty;else missing=true;
    const line=el("div","vu-order-summary-line");line.append(picture(e.item),el("span",null,e.item.name+" × "+e.qty),el("strong",null,Number.isFinite(p)&&p>=0?money(p*e.qty):"Price missing"));summary.append(line);
   }
+  const prep=new Map(),unmatched=[];
+  for(const e of lines()){
+   if(e.group!=="Cocktails")continue;
+   const recipe=(data.recipes||[]).find(r=>r.id===e.item.id||r.name===e.item.name);
+   if(!recipe?.ingredients?.length){unmatched.push(e.item.name);continue;}
+   for(const ingredient of recipe.ingredients){
+    const name=String(ingredient.name||"").trim(),amount=Number(ingredient.quantity??1)*e.qty;
+    if(!name||!Number.isFinite(amount)||amount<=0)continue;
+    const key=name.toLocaleLowerCase();const prev=prep.get(key);
+    if(prev)prev.quantity+=amount;else prep.set(key,{name,quantity:amount});
+   }
+  }
+  const prepList=$id("vu-prep-list");
+  if(prepList){
+   prepList.replaceChildren();
+   if(!prep.size&&!unmatched.length)prepList.append(el("p","muted","Add cocktails to see ingredients."));
+   else{
+    const ul=el("ul","vu-prep-items");
+    [...prep.values()].sort((a,b)=>a.name.localeCompare(b.name)).forEach(x=>{const li=el("li");li.append(el("span",null,x.name),el("strong",null,x.quantity+" ×"));ul.append(li);});
+    prepList.append(ul);
+    if(unmatched.length)prepList.append(el("p","vu-prep-warning","Recipe unavailable: "+unmatched.join(", ")));
+   }
+  }
   const discounted=discountedTotal(sum);
   $id("order-subtotal").textContent=missing?"—":money(sum);
   $id("order-discount-amount").textContent=missing?"—":"−"+money(sum-discounted);
@@ -622,6 +645,20 @@ function setupOrderCalculator(data){
   $id("order-count").textContent=String(count);$id("order-total").textContent=missing?"Incomplete — set prices":money(discounted);
   if(!count)summary.append(el("p","muted","No items selected yet."));
  }
+ $id("vu-prep-copy")?.addEventListener("click",()=>{
+  const ingredients=new Map();
+  for(const e of lines()){
+   if(e.group!=="Cocktails")continue;
+   const recipe=(data.recipes||[]).find(r=>r.id===e.item.id||r.name===e.item.name);
+   for(const ing of recipe?.ingredients||[]){
+    const name=String(ing.name||"").trim(),amount=Number(ing.quantity??1)*e.qty;
+    if(name&&Number.isFinite(amount)&&amount>0)ingredients.set(name,(ingredients.get(name)||0)+amount);
+   }
+  }
+  if(!ingredients.size){alert("Add cocktails with recipes first.");return;}
+  const output="VANILLA UNICORN — INGREDIENTS TO PREPARE\\n"+[...ingredients].sort((a,b)=>a[0].localeCompare(b[0])).map(([name,n])=>name+" × "+n).join("\\n");
+  if(navigator.clipboard?.writeText)navigator.clipboard.writeText(output).catch(()=>window.prompt("Copy ingredients:",output));else window.prompt("Copy ingredients:",output);
+ });
  $id("order-search").addEventListener("input",()=>{
   const q=$id("order-search").value.trim().toLowerCase();
   for(const e of entries)e.row.hidden=!e.row.dataset.search.includes(q);
