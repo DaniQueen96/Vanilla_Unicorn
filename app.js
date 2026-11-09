@@ -37,10 +37,14 @@ let packageImages={};
 function pkgImageKey(item){return item.kind+":"+item.id}
 function pkgImageFor(item){return packageImages[pkgImageKey(item)]||""}
 function pkgApplyImage(img,item){
- const custom=pkgImageFor(item),id=String(item.id||item.name).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
- const existing="https://p17.admin.opfw.me/images/icons/items/"+encodeURIComponent(id)+".png";img.src=custom||existing;img.classList.remove("vu-pkg-photo-placeholder");
- img.onerror=()=>{img.onerror=null;img.src="assets/vu-unicorn.svg";img.classList.add("vu-pkg-photo-placeholder")};
+ const custom=pkgImageFor(item);
+ const id=String(item.id||item.name).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"").replace("pi_a_colada","pina_colada");
+ const base="https://p17.admin.opfw.me/images/icons/items/"+encodeURIComponent(id);
+ const candidates=custom?[custom,base+".png",base+".webp",base+".jpg"]:[base+".png",base+".webp",base+".jpg"];
+ let attempt=0;img.classList.remove("vu-pkg-photo-placeholder");img.src=candidates[0];
+ img.onerror=()=>{attempt++;if(attempt<candidates.length)img.src=candidates[attempt];else{img.onerror=null;img.src="assets/vu-unicorn.svg";img.classList.add("vu-pkg-photo-placeholder");}};
 }
+
 function setupPackageMedia(){
  const select=$("vu-media-item");if(!select)return;
  const items=[...data.recipes.map(x=>({...x,id:x.id||x.name,kind:"cocktail"})),...data.drinks.map(x=>({...x,kind:"drink"})),...data.services.map(x=>({...x,kind:"service"})),{id:"mobile-bar",name:"Mobile cocktail bar van",kind:"feature"},{id:"limo-hire",name:"Limousine hire",kind:"feature"}];
@@ -251,7 +255,7 @@ function render(){if(!data.recipes.length)data.recipes=[{"name":"Whiskey Sour","
  const id=(r.id||r.name.toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/_$/,"")).replace("pi_a_colada","pina_colada");
  const imageBase="https://p17.admin.opfw.me/images/icons/items/"+encodeURIComponent(id);
  img.src=imageBase+".png";
- img.onerror=()=>{const tried=Number(img.dataset.tried||0);img.dataset.tried=String(tried+1);if(tried===0){img.src=imageBase+".webp";}else if(tried===1){img.src=imageBase+".jpg";}else if(tried===2&&id==="pina_colada"){img.src="https://p17.admin.opfw.me/images/icons/items/pi_a_colada.png";}else{img.onerror=null;img.src="assets/vu-unicorn.svg";img.alt="Vanilla Unicorn logo — cocktail image unavailable";visual.classList.add("vu-recipe-image-fallback");}};
+ img.onerror=()=>{const tried=Number(img.dataset.tried||0);img.dataset.tried=String(tried+1);if(tried===0){img.src=imageBase+".png?retry=1";}else if(tried===1){img.src=imageBase+".webp";}else if(tried===2){img.src=imageBase+".jpg";}else{img.onerror=null;img.src="assets/vu-unicorn.svg";img.alt="Cocktail image unavailable";visual.classList.add("vu-recipe-image-fallback");}};
  visual.append(img);
  const body=el("div","vu-recipe-body");
  const title=el("h3",null,r.name);
