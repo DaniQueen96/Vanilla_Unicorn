@@ -478,7 +478,7 @@ function setupOrderCalculator(data){
  };
  pkgRecipeUnitCost=unitCost;
  const marginFor=e=>Number(saved["__margin::"+e.key]??60);
- const suggestedFor=e=>{const cost=e.group==="Cocktails"?unitCost(e.item):storeCost(e.item),m=marginFor(e);return cost===null||m<10||m>90?null:Math.ceil((cost/(1-m/100))/5)*5;};
+ const suggestedFor=e=>{const cost=e.group==="Cocktails"?unitCost(e.item):storeCost(e.item),m=marginFor(e);return cost===null||m<10||m>90?null:Math.ceil(cost/(1-m/100));};
  let pricesLoaded=false,costsLoaded=false,seeded=new Set();
  const seedSuggested=()=>{
   if(!pricesLoaded||!costsLoaded)return;
@@ -547,7 +547,7 @@ function setupOrderCalculator(data){
     const stepDown=el("button","vu-qty-btn","−5%"),stepUp=el("button","vu-qty-btn","+5%");
     stepDown.type=stepUp.type="button";
     const suggested=el("div","vu-profit-result");
-    const apply=el("button",null,"Save suggested price as selling price");apply.type="button";
+    const apply=el("button",null,"Recalculate selling price from margin");apply.type="button";apply.hidden=true;
     const specialLabel=el("label","vu-special-toggle","Use special price");
     const specialOn=el("input");specialOn.type="checkbox";specialLabel.prepend(specialOn);
     const specialPrice=el("input");specialPrice.type="number";specialPrice.min="0";specialPrice.step="0.01";specialPrice.placeholder="Special price";specialPrice.setAttribute("aria-label",item.name+" special selling price");
@@ -555,7 +555,7 @@ function setupOrderCalculator(data){
     const steps=el("div","vu-margin-steps");steps.append(stepDown,sliderText,stepUp);
     sliderLabel.append(slider);pricingControls.append(costText,sliderLabel,steps,suggested,apply,specialRow);editor.append(pricingControls);
     const persist=(k,value)=>document.dispatchEvent(new CustomEvent("vu:save-price",{detail:{key:k,value}}));
-    const updateMargin=val=>{const m=Math.min(90,Math.max(10,Number(val)));slider.value=String(m);saved["__margin::"+key]=m;persist("__margin::"+key,m);calculate();};
+    const updateMargin=val=>{const m=Math.min(90,Math.max(10,Number(val)));slider.value=String(m);saved["__margin::"+key]=m;const amount=suggestedFor(entry);if(amount!==null){price.value=String(amount);saved[key]=amount;persist(key,amount);}persist("__margin::"+key,m);calculate();};
     slider.addEventListener("change",()=>updateMargin(slider.value));
     slider.addEventListener("input",()=>{sliderText.textContent=slider.value+"%";});
     stepDown.onclick=()=>updateMargin(Number(slider.value)-5);
@@ -598,7 +598,7 @@ function setupOrderCalculator(data){
     const cost=e.group==="Cocktails"?unitCost(e.item):storeCost(e.item),m=marginFor(e),suggested=suggestedFor(e);
     ui.costText.textContent=cost===null?"Set purchase/ingredient cost in Settings → Recipe & Store Costs first":(e.group==="Cocktails"?"Production cost: ":"Store purchase cost: ")+money(cost);
     ui.slider.value=String(m);ui.sliderText.textContent=m+"%";
-    ui.suggested.textContent=suggested===null?"Suggested price unavailable":"Suggested: "+money(suggested)+" · gross profit "+money(suggested-cost)+" · actual margin "+(suggested>0?((suggested-cost)/suggested*100).toFixed(1):"0")+"%";
+    ui.suggested.textContent=cost===null?"Cost unavailable — update store or recipe costs":Number.isFinite(p)?"Current selling price: "+money(p)+" · gross profit "+money(p-cost)+" · actual margin "+(p>0?((p-cost)/p*100).toFixed(1):"0")+"%":suggested===null?"Suggested price unavailable":"Suggested selling price: "+money(suggested);
     ui.apply.disabled=suggested===null;
     ui.specialOn.checked=Boolean(special);
     if(document.activeElement!==ui.specialPrice)ui.specialPrice.value=saved["__special::"+e.key]??"";
