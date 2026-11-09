@@ -37,26 +37,14 @@ let packageImages={};
 function pkgImageKey(item){return item.kind+":"+item.id}
 function pkgImageFor(item){return packageImages[pkgImageKey(item)]||""}
 function pkgApplyImage(img,item){
- // Match both "Pina Colada" and "Piña Colada", regardless of catalogue ID.
- const pinaName=String(item.name||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
- const pinaId=String(item.id||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
- if(pinaName==="pinacolada"||pinaId==="pinacolada"){
-  img.classList.remove("vu-pkg-photo-placeholder");
-  img.src="assets/pina-colada.png";
-  img.onerror=()=>{img.onerror=null;img.src="assets/vu-unicorn.svg";img.classList.add("vu-pkg-photo-placeholder");};
-  return;
- }
- const custom=pkgImageFor(item);
- const rawId=String(item.id||item.name).trim();
- const normalized=rawId.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"");
- const ids=[...new Set([rawId,normalized,normalized==="pi_a_colada"?"pina_colada":normalized])];
- const base="https://p17.admin.opfw.me/images/icons/items/";
- const verifiedPina=normalized==="pi_a_colada"||normalized==="pina_colada"?"https://p17.admin.opfw.me/images/icons/items/pina_colada.png":null;
- const candidates=[...(custom?[custom]:[]),...(verifiedPina?[verifiedPina]:[]),...ids.flatMap(id=>["png","webp","jpg"].map(ext=>base+encodeURIComponent(id)+"."+ext))];
- let attempt=0;
+ // Same direct item-icon loading approach as the working drinks list.
+ const id=String(item.id||item.name||"");
+ const name=String(item.name||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+ const key=id.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+ const file=name==="pinacolada"||key==="pinacolada"?"pina_colada":id.toLowerCase().replace(/-/g,"_");
  img.classList.remove("vu-pkg-photo-placeholder");
- img.src=candidates[0];
- img.onerror=()=>{attempt++;if(attempt<candidates.length)img.src=candidates[attempt];else{img.onerror=null;img.src="assets/vu-unicorn.svg";img.classList.add("vu-pkg-photo-placeholder");}};
+ img.src=pkgImageFor(item)||"https://p17.admin.opfw.me/images/icons/items/"+encodeURIComponent(file)+".png";
+ img.onerror=()=>{img.onerror=null;img.src="assets/vu-unicorn.svg";img.classList.add("vu-pkg-photo-placeholder");};
 }
 
 function setupPackageMedia(){
@@ -93,7 +81,7 @@ function setupPackageMedia(){
  document.dispatchEvent(new Event("vu:package-media-ready"));
 }
 let pkgCategory="Cocktails",pkgCustom=[],pkgDraftId=null,pkgDrafts=[],pkgStep="plan";
-const pkgFields=["vu-plan-name","vu-plan-customer","vu-pkg-occasion","vu-plan-guests","vu-plan-guests-max","vu-pkg-start","vu-pkg-end","vu-pkg-location","vu-plan-budget","vu-pkg-requests","vu-plan-discount","vu-pkg-room-fee","vu-pkg-room-expenses","vu-pkg-van-colour","vu-pkg-van-location","vu-pkg-limo-colour","vu-pkg-limo-route","vu-pkg-limo-requests","vu-pkg-event-theme","vu-pkg-event-style","vu-pkg-van-enabled","vu-pkg-van-fee","vu-pkg-van-hours","vu-pkg-van-cost","vu-pkg-van-expenses","vu-pkg-limo-enabled","vu-pkg-limo-fee","vu-pkg-limo-hours","vu-pkg-limo-expenses","vu-pkg-extra-cost","vu-pkg-adjustment","vu-pkg-bartenders","vu-pkg-dancers","vu-pkg-djs","vu-pkg-security","vu-pkg-drivers","vu-pkg-status","vu-pkg-itinerary","vu-pkg-checklist"];
+const pkgFields=["vu-pkg-booking-type","vu-pkg-customer-type","vu-pkg-business-name","vu-pkg-phone","vu-pkg-contact-method","vu-pkg-contact-details","vu-pkg-timezone","vu-plan-name","vu-plan-customer","vu-pkg-occasion","vu-plan-guests","vu-plan-guests-max","vu-pkg-start","vu-pkg-end","vu-pkg-location","vu-plan-budget","vu-pkg-requests","vu-plan-discount","vu-pkg-room-fee","vu-pkg-room-expenses","vu-pkg-van-colour","vu-pkg-van-location","vu-pkg-limo-colour","vu-pkg-limo-route","vu-pkg-limo-requests","vu-pkg-event-theme","vu-pkg-event-style","vu-pkg-van-enabled","vu-pkg-van-fee","vu-pkg-van-hours","vu-pkg-van-cost","vu-pkg-van-expenses","vu-pkg-limo-enabled","vu-pkg-limo-fee","vu-pkg-limo-hours","vu-pkg-limo-expenses","vu-pkg-extra-cost","vu-pkg-adjustment","vu-pkg-bartenders","vu-pkg-dancers","vu-pkg-djs","vu-pkg-security","vu-pkg-drivers","vu-pkg-status","vu-pkg-itinerary","vu-pkg-checklist"];
 const pkgNum=id=>Number($(id)?.value||0)||0;
 function pkgTotals(){
  const unpriced=packageEntries.filter(x=>x.quantity>0&&x.kind!=="special"&&!validPrice(x.price));
@@ -153,11 +141,11 @@ function renderPackageCreator(){
   const card=el("article","vu-package-card"),top=el("div","vu-package-card-top"),image=el("img","vu-item-icon");image.alt=item.name;image.loading="lazy";pkgApplyImage(image,item);
   const info=el("div","vu-package-info");info.append(el("strong",null,item.name));top.append(image,info);
   const priceRow=el("label","vu-package-price-row",item.kind==="special"?"Hire charge ($)":"Quote price ($)"),priceInput=el("input");priceInput.type="number";priceInput.min="0";priceInput.step="0.01";priceInput.value=validPrice(entry.price)?String(entry.price):"";priceInput.setAttribute("aria-label",item.name+" price");
-  const control=el("div","vu-package-control"),minus=el("button",null,"−"),plus=el("button",null,"+"),slider=el("input"),count=el("strong",null,String(entry.quantity));
+  const control=el("div","vu-package-control"),minus=el("button",null,"−"),plus=el("button",null,"+"),slider=el("input"),count=el("input");count.type="number";count.min="0";count.max="100";count.step="1";count.value=String(entry.quantity);count.setAttribute("aria-label",item.name+" quantity");count.className="vu-pkg-quantity";
   minus.type=plus.type="button";slider.type="range";slider.min="0";slider.max="100";slider.step="1";slider.value=String(entry.quantity);
-  const sync=()=>{card.classList.toggle("vu-pkg-picked",entry.quantity>0);slider.disabled=!validPrice(entry.price);minus.disabled=plus.disabled=slider.disabled;slider.value=String(entry.quantity);count.textContent=String(entry.quantity);updatePackageTotals();};
+  const sync=()=>{card.classList.toggle("vu-pkg-picked",entry.quantity>0);slider.disabled=!validPrice(entry.price);minus.disabled=plus.disabled=slider.disabled;slider.value=String(entry.quantity);count.value=String(entry.quantity);updatePackageTotals();};
   priceInput.oninput=()=>{entry.manualPrice=true;entry.price=priceInput.value===""?null:Number(priceInput.value);if(item.kind==="special"){const field=item.id==="vu-mobile-bar"?"vu-pkg-van-fee":item.id==="vu-limousine"?"vu-pkg-limo-fee":"vu-pkg-room-fee";$(field).value=priceInput.value;}if(!validPrice(entry.price))entry.quantity=0;sync();};
-  const set=n=>{entry.quantity=Math.max(0,Math.min(item.kind==="special"?1:100,n));if(item.kind==="special"){const id=item.id==="vu-mobile-bar"?"vu-pkg-van-enabled":item.id==="vu-limousine"?"vu-pkg-limo-enabled":null;if(id)$(id).checked=entry.quantity>0;}sync();pkgUpdateServiceDetails()};minus.onclick=()=>set(entry.quantity-1);plus.onclick=()=>set(entry.quantity+1);slider.oninput=()=>set(Number(slider.value));
+  const set=n=>{entry.quantity=Math.max(0,Math.min(item.kind==="special"?1:100,n));if(item.kind==="special"){const id=item.id==="vu-mobile-bar"?"vu-pkg-van-enabled":item.id==="vu-limousine"?"vu-pkg-limo-enabled":null;if(id)$(id).checked=entry.quantity>0;}sync();pkgUpdateServiceDetails()};minus.onclick=()=>set(entry.quantity-1);plus.onclick=()=>set(entry.quantity+1);slider.oninput=()=>set(Number(slider.value));count.onchange=()=>set(Number(count.value)||0);
   priceRow.append(priceInput);control.append(minus,slider,count,plus);card.append(top,priceRow,control);root.append(card);sync();
  }
  updatePackageTotals();pkgUpdateServiceDetails();
@@ -189,7 +177,7 @@ function pkgSnapshot(){const totals=pkgTotals();return {pricingSnapshot:true,pri
 function pkgLoad(d){
  const fields=d.fields||{};for(const id of pkgFields){const input=$(id);if(!input)continue;if(input.type==="checkbox")input.checked=Boolean(fields[id]);else if(fields[id]!=null)input.value=fields[id];}
  pkgCustom=Array.isArray(d.custom)?d.custom:[];pkgCatering=Array.isArray(d.catering)?d.catering:[];pkgRenderCatering();pkgServiceNotes=d.serviceNotes||{};const map=new Map((d.items||[]).map(x=>[x.kind+":"+x.id,x]));for(const x of packageEntries){const saved=map.get(x.kind+":"+x.id);x.quantity=saved?.quantity||0;if(saved){x.price=saved.price;x.manualPrice=true;}}
- renderPackageCreator();pkgRenderCustom();$("vu-pkg-van-details").hidden=!$("vu-pkg-van-enabled").checked;$("vu-pkg-limo-details").hidden=!$("vu-pkg-limo-enabled").checked;if($("vu-pkg-van-toggle"))$("vu-pkg-van-toggle").checked=$("vu-pkg-van-enabled").checked;if($("vu-pkg-limo-toggle"))$("vu-pkg-limo-toggle").checked=$("vu-pkg-limo-enabled").checked;updatePackageTotals();
+ renderPackageCreator();pkgRenderCustom();pkgTimezonePreview();$("vu-pkg-van-details").hidden=!$("vu-pkg-van-enabled").checked;$("vu-pkg-limo-details").hidden=!$("vu-pkg-limo-enabled").checked;if($("vu-pkg-van-toggle"))$("vu-pkg-van-toggle").checked=$("vu-pkg-van-enabled").checked;if($("vu-pkg-limo-toggle"))$("vu-pkg-limo-toggle").checked=$("vu-pkg-limo-enabled").checked;updatePackageTotals();
 }
 function pkgRenderCatering(){
  const root=$("vu-pkg-catering-list");if(!root)return;root.replaceChildren();
@@ -197,6 +185,29 @@ function pkgRenderCatering(){
 }
 function pkgRenderCustom(){
  const root=$("vu-pkg-custom-list");root.replaceChildren();pkgCustom.forEach((x,i)=>{const row=el("div","vu-pkg-custom-row");row.append(el("span",null,x.quantity+" × "+x.name+" · "+cash(x.price*x.quantity)+" (cost "+cash(x.cost*x.quantity)+")"));const b=el("button",null,"Remove");b.type="button";b.onclick=()=>{pkgCustom.splice(i,1);pkgRenderCustom();updatePackageTotals()};row.append(b);root.append(row);});
+}
+function pkgSyncBookingType(){
+ const type=$("vu-pkg-booking-type")?.value;
+ const van=type==="mobile"||type==="combined",limo=type==="limo";
+ if(van||limo){const input=$(van?"vu-pkg-van-enabled":"vu-pkg-limo-enabled");if(input&&!input.checked){input.checked=true;input.dispatchEvent(new Event("input",{bubbles:true}));}}
+ if(type==="mobile"||type==="combined"){$("vu-pkg-van-details").hidden=false;$("vu-pkg-van-toggle").checked=true;}
+ if(type==="limo"){$("vu-pkg-limo-details").hidden=false;$("vu-pkg-limo-toggle").checked=true;}
+}
+function pkgTimezonePreview(){
+ const out=$("vu-pkg-timezone-preview"),start=$("vu-pkg-start")?.value,zone=$("vu-pkg-timezone")?.value;
+ if(!out)return;
+ if(!start){out.textContent="Enter the event's local date and time, then choose its time zone.";return;}
+ // Convert the event wall-clock time to an instant using Intl, including DST changes.
+ try{
+  const parts=start.split(/[-T:]/).map(Number);const wall=Date.UTC(parts[0],parts[1]-1,parts[2],parts[3],parts[4]);
+  const formatter=new Intl.DateTimeFormat("en-GB",{timeZone:zone,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
+  const offset=at=>{const p=Object.fromEntries(formatter.formatToParts(new Date(at)).filter(x=>x.type!=="literal").map(x=>[x.type,Number(x.value)]));return Date.UTC(p.year,p.month-1,p.day,p.hour,p.minute)-at;};
+  let instant=wall-offset(wall);instant=wall-offset(instant);
+  const check=formatter.formatToParts(new Date(instant));const values=Object.fromEntries(check.filter(x=>x.type!=="literal").map(x=>[x.type,Number(x.value)]));
+  if(Date.UTC(values.year,values.month-1,values.day,values.hour,values.minute)!==wall){out.textContent="This local time may be skipped or repeated by daylight-saving changes. Please confirm the time with the customer.";return;}
+  const uk=new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/London",dateStyle:"medium",timeStyle:"short"}).format(new Date(instant));
+  out.textContent="Event time: "+start.replace("T"," ")+" ("+zone+") · UK time: "+uk;
+ }catch(e){out.textContent="Please check the event date and time zone.";}
 }
 function pkgSetStep(step){
  pkgStep=step;document.querySelectorAll("[data-pkg-panel]").forEach(x=>x.hidden=x.dataset.pkgPanel!==step);
@@ -215,8 +226,11 @@ function setupPackagePlanner(){
  if(!$("vu-pkg-save"))return;
  const steps=["plan","build","price","organise","confirm"];
  document.querySelectorAll("[data-pkg-step]").forEach(b=>b.onclick=()=>pkgSetStep(b.dataset.pkgStep));
+ $("vu-pkg-booking-type")?.addEventListener("change",pkgSyncBookingType);
+ for(const id of ["vu-pkg-start","vu-pkg-timezone"])$(id)?.addEventListener("change",pkgTimezonePreview);
+ pkgTimezonePreview();
  $("vu-pkg-back").onclick=()=>pkgSetStep(steps[Math.max(0,steps.indexOf(pkgStep)-1)]);
- $("vu-pkg-next").onclick=()=>pkgSetStep(steps[Math.min(4,steps.indexOf(pkgStep)+1)]);
+ $("vu-pkg-next").onclick=()=>{if(pkgStep==="plan"){if(!$("vu-pkg-booking-type").value){alert("Choose the booking type before continuing.");return;}if(!$("vu-plan-customer").value.trim()){alert("Enter a customer or contact name.");return;}pkgSyncBookingType();}pkgSetStep(steps[Math.min(4,steps.indexOf(pkgStep)+1)]);};
  pkgFields.forEach(id=>$(id)?.addEventListener("input",()=>{const van=$("vu-pkg-van-enabled")?.checked,limo=$("vu-pkg-limo-enabled")?.checked;for(const [id,enabled,fee] of [["vu-mobile-bar",van,"vu-pkg-van-fee"],["vu-limousine",limo,"vu-pkg-limo-fee"]]){const entry=packageEntries.find(x=>x.id===id);if(entry){entry.quantity=enabled?1:0;entry.price=pkgNum(fee);}}$("vu-pkg-van-details").hidden=!van;$("vu-pkg-limo-details").hidden=!limo;updatePackageTotals();pkgUpdateServiceDetails();}));
  $("vu-pkg-custom-add").onclick=()=>{
   const name=$("vu-pkg-custom-name").value.trim(),quantity=Math.max(1,Math.floor(pkgNum("vu-pkg-custom-qty"))),price=pkgNum("vu-pkg-custom-price"),cost=pkgNum("vu-pkg-custom-cost");
