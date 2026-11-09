@@ -89,7 +89,26 @@ const galleryCollection=collection(db,"publicGallery");const albumCollection=col
   for(let i=0;i<docs.length;i+=400){const batch=writeBatch(db);docs.slice(i,i+400).forEach(d=>batch.update(d.ref,{published:false}));await batch.commit();}
  }
 }else await addDoc(albumCollection,{caption,description,sensitive:false,published,createdAt:serverTimestamp()});document.dispatchEvent(new CustomEvent("vu:album-changed",{detail:"Album saved."}));}catch(err){document.dispatchEvent(new CustomEvent("vu:albums-error",{detail:err.message}));}});document.addEventListener("vu:album-delete",async e=>{if(auth.currentUser?.uid!==OWNER_UID)return;try{const {getDocs,query,where}=await import("https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js");const linked=await getDocs(query(galleryCollection,where("albumId","==",e.detail)));if(!linked.empty)throw Error("Move or remove photos first.");await deleteDoc(doc(db,"vuMemoryAlbums",e.detail));}catch(err){document.dispatchEvent(new CustomEvent("vu:albums-error",{detail:err.message}));}});let galleryStop=null;
-document.addEventListener("vu:gallery-ready",()=>{if(!galleryStop)galleryStop=onSnapshot(galleryCollection,s=>document.dispatchEvent(new CustomEvent("vu:gallery-updated",{detail:s.docs.map(d=>({id:d.id,...d.data()}))})),e=>document.dispatchEvent(new CustomEvent("vu:gallery-error",{detail:e.message})));});
+let galleryLegacyChecked=false;
+document.addEventListener("vu:gallery-ready",()=>{
+ if(galleryStop)return;
+ galleryStop=onSnapshot(galleryCollection,async snapshot=>{
+  document.dispatchEvent(new CustomEvent("vu:gallery-updated",{detail:snapshot.docs.map(d=>({id:d.id,...d.data()}))}));
+  // Legacy venue uploads predate the published flag; these were publicly visible before
+  // the published-only security rule. Do not change explicitly hidden or memory photos.
+  if(galleryLegacyChecked||auth.currentUser?.uid!==OWNER_UID)return;
+  galleryLegacyChecked=true;
+  const legacy=snapshot.docs.filter(d=>d.data().published===undefined&&(d.data().collection||"venue")==="venue");
+  try{
+   for(let i=0;i<legacy.length;i+=400){
+    const batch=writeBatch(db);
+    legacy.slice(i,i+400).forEach(d=>batch.update(d.ref,{published:true}));
+    await batch.commit();
+   }
+   if(legacy.length)document.dispatchEvent(new CustomEvent("vu:gallery-changed",{detail:legacy.length+" older venue photos restored to the public gallery."}));
+  }catch(err){galleryLegacyChecked=false;document.dispatchEvent(new CustomEvent("vu:gallery-error",{detail:"Older photo migration: "+err.message}));}
+ },e=>document.dispatchEvent(new CustomEvent("vu:gallery-error",{detail:e.message})));
+});
 document.addEventListener("vu:gallery-save",async e=>{if(auth.currentUser?.uid!==OWNER_UID)return;const {image,caption,category,description="",collection,albumId="",published=true,consent=false}=e.detail||{};if(typeof image!=="string"||image.length>270000||typeof caption!=="string"||caption.length>90||typeof description!=="string"||description.length>240||!["venue","memories"].includes(collection)||(collection==="memories"&&(!albumId||!consent))||(collection==="venue"&&!["Venue","Events","Entertainment","Drinks & Food","VIP & Parties","Private Rooms"].includes(category)))return;try{
  if(collection==="memories"&&published){
   const album=await getDoc(doc(db,"vuMemoryAlbums",albumId));
