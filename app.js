@@ -464,6 +464,7 @@ function setupOrderCalculator(data){
  let costing={prices:fallbackPrices,recipes:fallbackRecipes};
  const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
  const getRecipe=item=>costing?.recipes?.find(r=>norm(r.name)===norm(item.name)||norm(r.name).startsWith(norm(item.name)));
+ const storeCost=item=>{const prices=costing?.prices||fallbackPrices;const aliases=[item.name,item.id,String(item.name).replace(/^Hotdog$/i,"Hot Dog")];const found=Object.entries(prices).find(([name])=>aliases.some(alias=>norm(alias)===norm(name)));const amount=found?Number(found[1]):NaN;return Number.isFinite(amount)&&amount>=0?amount:null;};
  const unitCost=item=>{
   const recipe=getRecipe(item);if(!recipe||!costing?.prices)return null;
   const yieldCount=Number(recipe.yieldCount);if(!Number.isFinite(yieldCount)||yieldCount<=0)return null;
@@ -476,8 +477,8 @@ function setupOrderCalculator(data){
   return sum/yieldCount;
  };
  pkgRecipeUnitCost=unitCost;
- const marginFor=e=>Number(saved["__margin::"+e.key]??saved["__defaultMargin"]??30);
- const suggestedFor=e=>{const cost=unitCost(e.item),m=marginFor(e);return cost===null||m<10||m>90?null:Math.ceil((cost/(1-m/100))/5)*5;};
+ const marginFor=e=>Number(saved["__margin::"+e.key]??60);
+ const suggestedFor=e=>{const cost=e.group==="Cocktails"?unitCost(e.item):storeCost(e.item),m=marginFor(e);return cost===null||m<10||m>90?null:Math.ceil((cost/(1-m/100))/5)*5;};
  let pricesLoaded=false,costsLoaded=false,seeded=new Set();
  const seedSuggested=()=>{
   if(!pricesLoaded||!costsLoaded||!costing?.recipes?.length)return;
@@ -536,9 +537,9 @@ function setupOrderCalculator(data){
    editButton.onclick=()=>{editor.hidden=!editor.hidden;editButton.setAttribute("aria-expanded",String(!editor.hidden));editButton.textContent=editor.hidden?"Edit pricing":"Close editor";};
    priceRow.append(priceHeader,editor);
    let pricingControls=null;
-   if(group==="Cocktails"){
+   {
     pricingControls=el("div","vu-profit-controls");
-    const costText=el("small","muted","Loading ingredient costs…");
+    const costText=el("small","muted","Loading purchase/recipe costs…");
     const sliderLabel=el("label",null,"Target profit margin");
     const slider=el("input");slider.type="range";slider.min="10";slider.max="90";slider.step="5";
     const sliderText=el("strong",null,"30%");
@@ -592,10 +593,10 @@ function setupOrderCalculator(data){
    e.priceDisplay.textContent=Number.isFinite(p)&&p>=0?money(p)+(special?" · Special":""):(suggestion!==null?money(suggestion)+" suggested":"Price not set");
    const ui=e.pricingControls?._ui;
    if(ui){
-    const cost=unitCost(e.item),m=marginFor(e),suggested=suggestedFor(e);
-    ui.costText.textContent=cost===null?"Set up ingredient costs in Recipe & Store Costs first":"Cost per serving: "+money(cost);
+    const cost=e.group==="Cocktails"?unitCost(e.item):storeCost(e.item),m=marginFor(e),suggested=suggestedFor(e);
+    ui.costText.textContent=cost===null?"Set purchase/ingredient cost in Settings → Recipe & Store Costs first":(e.group==="Cocktails"?"Production cost: ":"Store purchase cost: ")+money(cost);
     ui.slider.value=String(m);ui.sliderText.textContent=m+"%";
-    ui.suggested.textContent=suggested===null?"Suggested price unavailable":"Suggested: "+money(suggested)+" · expected profit "+money(suggested-cost);
+    ui.suggested.textContent=suggested===null?"Suggested price unavailable":"Suggested: "+money(suggested)+" · gross profit "+money(suggested-cost)+" · actual margin "+(suggested>0?((suggested-cost)/suggested*100).toFixed(1):"0")+"%";
     ui.apply.disabled=suggested===null;
     ui.specialOn.checked=Boolean(special);
     if(document.activeElement!==ui.specialPrice)ui.specialPrice.value=saved["__special::"+e.key]??"";
@@ -627,10 +628,10 @@ function setupOrderCalculator(data){
    if(Object.hasOwn(saved,e.key)&&saved[e.key]!==null)e.price.value=String(saved[e.key]);
    else e.price.value="";
   }
-  globalMargin.value=String(saved.__defaultMargin??30);updateDefault();
+  globalMargin.value=String(saved.__defaultMargin??60);updateDefault();
   seedSuggested();
  });
- document.addEventListener("vu:costing-updated",event=>{if(event.detail?.recipes?.length){costing=event.detail;costsLoaded=true;seedSuggested();}else calculate();});
+ document.addEventListener("vu:costing-updated",event=>{if(event.detail?.prices){costing=event.detail;costsLoaded=true;seedSuggested();}else calculate();});
  setActive(active,false);setActive(pricingActive,true);calculate();root.dataset.initialized="true";document.dispatchEvent(new Event("vu:pricing-ready"));
 }
 
