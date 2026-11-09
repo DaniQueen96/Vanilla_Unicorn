@@ -569,7 +569,8 @@ function setupOrderCalculator(data){
    const entry={item,group,key,row,price,priceDisplay,qty:0,pricingControls,cardPrice};entries.push(entry);
    const change=delta=>{entry.qty=Math.max(0,entry.qty+delta);qty.textContent=String(entry.qty);calculate();};
    minus.onclick=()=>change(-1);plus.onclick=()=>change(1);
-   price.addEventListener("input",()=>{const p=Number(price.value);if(price.value!==""&&Number.isFinite(p)&&p>=0)saved[key]=p;else delete saved[key];const status=$id("pricing-status");if(status)status.textContent="Saving…";document.dispatchEvent(new CustomEvent("vu:save-price",{detail:{key,value:price.value===""?null:p}}));calculate();});
+   price.addEventListener("input",()=>{const p=Number(price.value);if(price.value!==""&&Number.isFinite(p)&&p>=0)saved[key]=p;else delete saved[key];calculate();});
+   price.addEventListener("change",()=>{const raw=price.value.trim(),p=Number(raw);if(raw!==""&&(!Number.isFinite(p)||p<0))return;const value=raw===""?null:p;saved[key]=value;const status=$id("pricing-status");if(status)status.textContent="Saving selling price…";document.dispatchEvent(new CustomEvent("vu:save-price",{detail:{key,value}}));calculate();});
   }
  }
  const globalMargin=$id("pricing-default-margin"),globalValue=$id("pricing-default-value");
@@ -626,6 +627,7 @@ function setupOrderCalculator(data){
  document.addEventListener("vu:prices-updated",event=>{
   saved=event.detail||{};pricesLoaded=true;
   for(const e of entries){
+   if(document.activeElement===e.price)continue; // Preserve an in-progress manual edit during Firebase refresh.
    if(Object.hasOwn(saved,e.key)&&saved[e.key]!==null)e.price.value=String(saved[e.key]);
    else e.price.value="";
   }
