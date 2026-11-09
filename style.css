@@ -340,3 +340,7 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 .vu-prep-items li{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid rgba(226,144,184,.13);font-size:.9rem}
 .vu-prep-items strong{color:#f5a9d2;white-space:nowrap}
 .vu-prep-warning{color:#ffc6ad;font-size:.85rem}
+
+.vu-qty-controls input.vu-qty-value{width:3.6rem;min-width:3.6rem;max-width:3.6rem;text-align:center;padding:6px 3px;border:1px solid rgba(226,144,184,.32);border-radius:8px;background:rgba(21,12,25,.65);color:inherit;font:inherit;font-weight:700;appearance:textfield;-moz-appearance:textfield}
+.vu-qty-controls input.vu-qty-value::-webkit-inner-spin-button,.vu-qty-controls input.vu-qty-value::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.vu-qty-controls input.vu-qty-value:focus-visible{outline:2px solid #f58fbd;outline-offset:2px}
