@@ -51,6 +51,16 @@ function beginPricingSync(){
   if(status)status.textContent="Price sync failed: "+error.message;
  });
 }
+document.getElementById("vu-export-menu-prices")?.addEventListener("click",()=>{
+ if(auth.currentUser?.uid!==OWNER_UID){alert("Only the owner can export prices.");return;}
+ if(!stopPricingListener){alert("Pricing has not finished loading. Open Pricing Management and try again.");return;}
+ const categories=["Cocktails","Soft Drinks","Beer & Cider","Spirits & Alcohol","Other Drinks","More Drinks","Food & Snacks"];
+ const prices=Object.fromEntries(Object.entries(sharedPrices).filter(([key,value])=>categories.some(category=>key.startsWith(category+"::"))&&typeof value==="number"&&Number.isFinite(value)&&value>=0));
+ if(!Object.keys(prices).length){alert("No saved menu prices found yet. Check the pricing sync status.");return;}
+ const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),prices},null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob);
+ const link=document.createElement("a");link.href=url;link.download="vanilla-unicorn-menu-prices.json";document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
 document.addEventListener("vu:pricing-ready",()=>{
  document.dispatchEvent(new CustomEvent("vu:prices-updated",{detail:sharedPrices}));
  if(currentCosting)document.dispatchEvent(new CustomEvent("vu:costing-updated",{detail:currentCosting}));
@@ -246,7 +256,7 @@ onAuthStateChanged(auth, async (user) => {
     appLoaded = true;
     const script = document.createElement("script");
     script.type = "module";
-    script.src = "app.js?v=20261109-free-navigation16";
+    script.src = "app.js?v=20261110-menu-export17";
     script.onerror = () => {
       appLoaded = false;
       const target = document.getElementById("order-categories");
