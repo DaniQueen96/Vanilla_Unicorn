@@ -196,3 +196,11 @@
 .vu-menu-full-image{display:inline-block;margin-top:14px;color:#f4c4d9;text-decoration:underline;text-underline-offset:4px}
 .vu-menu-full-image[hidden]{display:none}
 @media(max-width:650px){.vu-menu-feature{flex-direction:column;align-items:flex-start;padding:20px}.vu-menu-dialog{inset:2vh 2vw;width:96vw;max-height:96vh;padding:15px}.vu-menu-display img{max-height:70vh}}
+
+.vu-enquiry { margin-top: 2rem; max-width: 55rem; }
+.vu-enquiry-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1rem; margin: 1rem 0; }
+.vu-enquiry label { display: grid; gap: .35rem; }
+.vu-enquiry input, .vu-enquiry select, .vu-enquiry textarea { width: 100%; color: inherit; background: #18131f; border: 1px solid #76536d; border-radius: .5rem; padding: .65rem; font: inherit; }
+.vu-enquiry #vu-enquiry-result { margin: 1rem 0; }
+.hero-enlarge { position: absolute; bottom: 3.5rem; right: 1rem; z-index: 2; }
+.vu-enquiry [hidden], .hero-photo-panel [hidden] { display: none !important; }
