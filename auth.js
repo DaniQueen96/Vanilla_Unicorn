@@ -1,5 +1,6 @@
+import { eventInstant, overlaps, validateBooking } from "./booking.mjs";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, getDoc, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, getDoc, getDocs, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, updatePassword } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
 // Firebase web app identifiers are public; passwords and admin credentials are never stored here.
@@ -179,8 +180,86 @@ document.addEventListener("vu:package-media-ready",beginPackageImageSync);
 document.addEventListener("vu:package-image-save",async e=>{if(auth.currentUser?.uid!==OWNER_UID)return;const {key,url}=e.detail||{};if(!key||typeof url!=="string"||(url&&!/^https:\/\//i.test(url)&&!/^data:image\/jpeg;base64,/i.test(url)))return;try{await setDoc(packageImagesDoc,{images:{[key]:url}},{merge:true});document.dispatchEvent(new Event("vu:package-image-saved"))}catch(error){document.dispatchEvent(new CustomEvent("vu:package-image-error",{detail:error.message}))}});
 const packageCollection=collection(db,"packagePlans");let packagePlans=[],stopPackagePlans=null;
 function beginPackageSync(){if(stopPackagePlans)return;stopPackagePlans=onSnapshot(packageCollection,s=>{packagePlans=s.docs.map(d=>({id:d.id,...d.data()}));document.dispatchEvent(new CustomEvent("vu:packages-updated",{detail:packagePlans}));},error=>document.dispatchEvent(new CustomEvent("vu:package-error",{detail:error.message})))}
-document.addEventListener("vu:package-ready",()=>{beginPackageSync();document.dispatchEvent(new CustomEvent("vu:packages-updated",{detail:packagePlans}))});
-document.addEventListener("vu:package-save",async e=>{if(auth.currentUser?.uid!==OWNER_UID)return;const {id,fields,items,custom,updatedAt}=e.detail||{};if(!id||!fields)return;try{await setDoc(doc(db,"packagePlans",id),{fields,items,custom,updatedAt},{merge:true});document.dispatchEvent(new Event("vu:package-saved"));}catch(error){document.dispatchEvent(new CustomEvent("vu:package-error",{detail:error.message}))}});
+const bookingSchedule=doc(db,"ownerSettings","bookingSchedule");
+const bookingTerms=doc(db,"ownerSettings","bookingTerms");
+let stopBookingTerms=null,stopBookingSchedule=null,defaultBookingTerms="",bookingReservations=null;
+function beginBookingSync(){
+ beginPackageSync();
+ if(!stopBookingTerms)stopBookingTerms=onSnapshot(bookingTerms,s=>{
+  defaultBookingTerms=s.data()?.text||"";
+  document.dispatchEvent(new CustomEvent("vu:booking-terms",{detail:defaultBookingTerms}));
+ },error=>console.error(error));
+ const publishSchedule=()=>document.dispatchEvent(new CustomEvent("vu:booking-schedule",{detail:bookingReservations}));
+ if(!stopBookingSchedule)stopBookingSchedule=onSnapshot(bookingSchedule,s=>{
+  bookingReservations=Object.values(s.data()?.entries||{});
+  publishSchedule();
+ },()=>{bookingReservations=null;publishSchedule();});
+ publishSchedule();
+ document.dispatchEvent(new CustomEvent("vu:booking-terms",{detail:defaultBookingTerms}));
+ document.dispatchEvent(new CustomEvent("vu:packages-updated",{detail:packagePlans}));
+ document.dispatchEvent(new CustomEvent("vu:customers-updated",{detail:customerCache}));
+}
+document.addEventListener("vu:package-ready",()=>{if(auth.currentUser?.uid===OWNER_UID)beginBookingSync();});
+document.addEventListener("vu:booking-terms-save",async e=>{
+ if(auth.currentUser?.uid!==OWNER_UID)return;
+ const status=document.getElementById("vu-pkg-save-status");
+ try{await setDoc(bookingTerms,{text:e.detail});status.textContent="Default terms saved.";}
+ catch(error){status.textContent=error.message;}
+});
+function updateReservation(transaction,snapshot,key,reservation,existingEvents=[]){
+ const current=Object.fromEntries(Object.entries(snapshot.data()?.entries||{}).filter(([,entry])=>entry.end>Date.now()));
+ delete current[key];
+ if(reservation){
+  const conflict=[...Object.values(current),...existingEvents].find(entry=>overlaps(entry,reservation));
+  if(conflict)throw Error("Booking conflict with "+conflict.title+". Choose a different time or resource.");
+  current[key]=reservation;
+ }
+ transaction.set(bookingSchedule,{entries:current});
+}
+document.addEventListener("vu:package-save",async e=>{
+ if(auth.currentUser?.uid!==OWNER_UID)return;
+ const {id,...plan}=e.detail;
+ const f=plan.fields;
+ const planRef=doc(db,"packagePlans",id);
+ const requestedCustomerId=f["vu-pkg-customer-id"];
+ const customerRef=requestedCustomerId?doc(customerCollection,requestedCustomerId):doc(customerCollection);
+ try{
+  const status=f["vu-pkg-status"];
+  const existingEvents=[];
+  if(status==="Confirmed"){
+   const events=await getDocs(collection(db,"publicEvents"));
+   for(const event of events.docs){
+    const d=event.data();
+    if(d.usesBookingSchedule)continue;
+    const zone=d.timezone||"Europe/London";
+    existingEvents.push({start:eventInstant(d.start,zone),end:eventInstant(d.end,zone),onsite:true,exclusive:false,resources:[],title:d.title});
+   }
+  }
+  const result=await runTransaction(db,async tx=>{
+   const previous=(await tx.get(planRef)).data();
+   if((previous?.revision||0)!==plan.revision)throw Error("This plan was changed elsewhere. Reopen it and try again.");
+   const reservation=validateBooking(plan,previous);
+   const schedule=reservation||previous?.lifecycle==="Confirmed"?await tx.get(bookingSchedule):null;
+   const customer=requestedCustomerId?(await tx.get(customerRef)).data():null;
+   let customerId="";
+   if(f["vu-pkg-consent"]){
+    if(!f["vu-plan-customer"].trim())throw Error("Enter a customer name before saving a profile.");
+    if(requestedCustomerId&&customer?.bookingConsent!==true)throw Error("This profile no longer has consent. Select no linked profile to continue.");
+    customerId=customerRef.id;
+    tx.set(customerRef,{name:f["vu-plan-customer"].trim(),phone:f["vu-pkg-phone"].trim(),
+     contact:f["vu-pkg-contact-details"].trim(),bookingConsent:true,
+     bookingConsentAt:customer?.bookingConsentAt||plan.updatedAt},{merge:true});
+   }else if(customer?.bookingConsent){
+    tx.set(customerRef,{phone:"",contact:"",bookingConsent:false,bookingConsentWithdrawnAt:plan.updatedAt},{merge:true});
+   }
+   if(schedule)updateReservation(tx,schedule,"package:"+id,reservation?{...reservation,title:f["vu-plan-name"]}:null,existingEvents);
+   const revision=plan.revision+1;
+   tx.set(planRef,{...plan,fields:{...f,"vu-pkg-customer-id":customerId},revision,lifecycle:status});
+   return {id,revision,customerId};
+  });
+  document.dispatchEvent(new CustomEvent("vu:package-saved",{detail:result}));
+ }catch(error){document.dispatchEvent(new CustomEvent("vu:package-error",{detail:error.message}));}
+});
 const tabCollection=collection(db,"customerTabs");
 const customerCollection=collection(db,"customers");
 let customerCache=[];let stopCustomersListener=null;
@@ -256,7 +335,7 @@ onAuthStateChanged(auth, async (user) => {
     appLoaded = true;
     const script = document.createElement("script");
     script.type = "module";
-    script.src = "app.js?v=20261110-menu-export17";
+    script.src = "app.js?v=20261110-bookings1";
     script.onerror = () => {
       appLoaded = false;
       const target = document.getElementById("order-categories");
@@ -265,7 +344,11 @@ onAuthStateChanged(auth, async (user) => {
     };
     document.body.append(script);
   }
-  if (owner) { try { beginPricingSync(); } catch(error) { console.error("VU pricing sync failed",error); } try { beginTabSync(); } catch(error) { console.error("VU tab sync failed",error); } }
+  if (owner) { try { beginPricingSync(); } catch(error) { console.error("VU pricing sync failed",error); } try { beginTabSync(); if(appLoaded)beginBookingSync(); } catch(error) { console.error("VU tab sync failed",error); } }
+  if (!owner && stopPackagePlans) {stopPackagePlans();stopPackagePlans=null;packagePlans=[];document.dispatchEvent(new CustomEvent("vu:packages-updated",{detail:[]}));}
+  if (!owner && stopBookingTerms) {stopBookingTerms();stopBookingTerms=null;defaultBookingTerms="";}
+  if (!owner && stopBookingSchedule) {stopBookingSchedule();stopBookingSchedule=null;bookingReservations=null;document.dispatchEvent(new CustomEvent("vu:booking-schedule",{detail:null}));}
+  if (!owner && stopCustomersListener) {stopCustomersListener();stopCustomersListener=null;customerCache=[];document.dispatchEvent(new CustomEvent("vu:customers-updated",{detail:[]}));}
   if (!owner && stopTabsListener) {stopTabsListener();stopTabsListener=null;tabCache=[];}
   if (!owner && stopPricingListener) { stopPricingListener(); stopPricingListener=null; sharedPrices={}; }
   if (!owner && stopPricingCostingListener) { stopPricingCostingListener(); stopPricingCostingListener=null; currentCosting=null; }
@@ -394,7 +477,12 @@ function setupEvents() {
       const sub = document.createElement("div"); sub.className = "muted"; sub.textContent = e.start.replace("T"," ") + " · " + e.roles;
       details.append(title,sub);
       const remove = document.createElement("button"); remove.textContent = "Unpublish";
-      remove.onclick = async () => { if (confirm("Remove this event from the public calendar?")) await deleteDoc(doc(db,"publicEvents",e.id)); };
+      remove.onclick = async () => { if (!confirm("Remove this event from the public calendar?")) return;
+       try{await runTransaction(db,async tx=>{
+        const schedule=await tx.get(bookingSchedule);
+        updateReservation(tx,schedule,"event:"+e.id,null);
+        tx.delete(doc(db,"publicEvents",e.id));
+       });}catch(error){msg.textContent=error.message;} };
       row.append(details,remove); list.append(row);
     }
   }, e => {list.textContent = "Unable to load events: " + e.message;});
@@ -424,7 +512,15 @@ function setupEvents() {
     const roles = document.getElementById("event-roles").value.trim();
     if (!title || !start || !end || end <= start) {msg.textContent = "Check the title and event times.";return;}
     try {
-      await addDoc(collection(db,"publicEvents"),{title,start,end,description,roles,createdAt:serverTimestamp()});
+      const timezone="Europe/London";
+      const eventRef=doc(collection(db,"publicEvents"));
+      await runTransaction(db,async tx=>{
+       const schedule=await tx.get(bookingSchedule);
+       updateReservation(tx,schedule,"event:"+eventRef.id,{
+        title,start:eventInstant(start,timezone),end:eventInstant(end,timezone),onsite:true,exclusive:false,resources:[]
+       });
+       tx.set(eventRef,{title,start,end,description,roles,timezone,usesBookingSchedule:true,createdAt:serverTimestamp()});
+      });
       msg.textContent = "Event published. It will appear on the public events page.";
       form.reset();
     } catch(e) {msg.textContent = "Could not publish: " + e.message;}
