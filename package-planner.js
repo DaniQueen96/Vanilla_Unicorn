@@ -6,7 +6,24 @@ const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const fresh = (rules = E.defaults) => ({ schema: 2, id: null, customer: { name: '', phone: '', title: '', start: '', end: '', zone: 'Europe/London', occurrence: 'earlier', save: false }, services: { truck: { enabled: false, delivery: 'collect', driver: '', location: '', fuel: rules.fuel, labour: 0, staffed: false }, limo: { enabled: false, driver: 'vu', approved: false, journey: 'oneway', stops: 0, passengers: '', route: '', fuel: rules.fuel, labour: 0, colourEnabled: false, colour: '', colourCost: '', restoreCost: '' }, venue: { enabled: false, space: 'premium', booth1: true, booth2: false, guests: '', purpose: '', bar: 'guest', tabLimit: '', tabCost: '', expenses: 0 } }, items: [], extras: [], payment: { mode: 'full', depositType: 'percent', deposit: 25, paid: 0, refund: 0, damageDeposit: 0, damagePaid: 0, damageReturned: 0, deadline: '' }, handover: { before: '', after: '', fuel: '', stock: '', damage: '', repair: 0 }, status: 'Draft', notes: '', cancellation: '', holdOverride: false });
 let state = fresh(), step = 0, settings = { ...E.defaults }, plans = [], customers = [], prices = {}, costing = null, catalogue = [], published = [], lockedQuote = null, saving = false, ready = false;
 const byId = id => root.querySelector('#' + id);
-function field(label, path, type = 'text', extra = '') { const value = read(path); return `<label>${esc(label)}<input data-field="${path}" type="${type}" value="${esc(value)}" ${extra}></label>`; }
+function field(label, path, type = 'text', extra = '') { const value = read(path); if (type === 'datetime-local') return dateTimeField(label, path); return `<label>${esc(label)}<input data-field="${path}" type="${type}" value="${esc(value)}" ${extra}></label>`; }
+function dateTimeField(label, path) {
+  const [date = '', time = ''] = String(read(path)).split('T'), [hour = '18', minute = '00'] = time.split(':');
+  return `<fieldset class="booking-datetime" data-datetime="${path}"><legend>${esc(label)}</legend><details class="booking-date-popover"><summary>${date ? esc(new Date(date + 'T12:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })) : 'Choose date'}<span aria-hidden="true">▦</span></summary><div class="booking-calendar" data-month="${date.slice(0, 7) || new Date().toISOString().slice(0, 7)}"></div></details><div class="booking-time-parts"><label>Hour<select data-time-part="hour">${Array.from({length:24}, (_, i) => String(i).padStart(2,'0')).map(v => `<option ${v === hour ? 'selected' : ''}>${v}</option>`).join('')}</select></label><span>:</span><label>Minute<select data-time-part="minute">${Array.from({length:60}, (_, i) => String(i).padStart(2,'0')).map(v => `<option ${v === minute ? 'selected' : ''}>${v}</option>`).join('')}</select></label><span class="booking-time-format">24-hour</span></div><input type="hidden" data-field="${path}" value="${esc(read(path))}"><button type="button" class="booking-date-clear" data-date-clear>Clear</button></fieldset>`;
+}
+function paintCalendars() {
+  root.querySelectorAll('.booking-calendar').forEach(cal => {
+    const [year, month] = cal.dataset.month.split('-').map(Number), first = new Date(year, month - 1, 1), offset = (first.getDay() + 6) % 7, count = new Date(year, month, 0).getDate();
+    const selected = String(read(cal.closest('[data-datetime]').dataset.datetime)).slice(0,10);
+    cal.innerHTML = `<div class="booking-calendar-heading"><button type="button" data-month-shift="-1" aria-label="Previous month">‹</button><strong>${first.toLocaleDateString('en-GB',{month:'long',year:'numeric'})}</strong><button type="button" data-month-shift="1" aria-label="Next month">›</button></div><div class="booking-calendar-days">${['Mo','Tu','We','Th','Fr','Sa','Su'].map(d => `<span>${d}</span>`).join('')}${'<span></span>'.repeat(offset)}${Array.from({length:count},(_,i) => { const date = `${year}-${String(month).padStart(2,'0')}-${String(i+1).padStart(2,'0')}`; return `<button type="button" data-date="${date}" aria-pressed="${date === selected}">${i+1}</button>`; }).join('')}</div>`;
+  });
+}
+function updateDateTime(box, date) {
+  const input = box.querySelector('input[data-field]');
+  const chosen = date === undefined ? input.value.slice(0,10) : date;
+  input.value = chosen ? `${chosen}T${box.querySelector('[data-time-part="hour"]').value}:${box.querySelector('[data-time-part="minute"]').value}` : '';
+  changed({target:input},false);
+}
 function select(label, path, values) { return `<label>${esc(label)}<select data-field="${path}">${values.map(([v, name]) => `<option value="${esc(v)}" ${read(path) === v ? 'selected' : ''}>${esc(name)}</option>`).join('')}</select></label>`; }
 function check(label, path) { return `<label class="booking-check"><input type="checkbox" data-field="${path}" ${read(path) ? 'checked' : ''}>${esc(label)}</label>`; }
 function read(path) { return path.split('.').reduce((o, key) => o?.[key], state) ?? ''; }
@@ -14,7 +31,7 @@ function write(path, value) { const keys = path.split('.'); let obj = state; for
 function times(key) { return `<details><summary>Different service times</summary><p>Otherwise uses the event start and end. Hire fees are fixed, not hourly.</p><div class="booking-grid">${field('Service start / pickup', `services.${key}.start`, 'datetime-local')}${field('Service end / return', `services.${key}.end`, 'datetime-local')}</div></details>`; }
 function base() {
   root.innerHTML = `<div class="head"><p class="booking-eyebrow">VANILLA UNICORN · OWNER WORKSPACE</p><h2>Create their experience</h2><p>One enquiry. Every detail. A clear price.</p></div><div class="booking-toolbar"><label>Saved enquiries & bookings<select id="booking-saved"><option value="">Choose a saved booking</option></select></label><button type="button" id="booking-new">New enquiry</button><button type="button" id="booking-draft">Save draft</button><button type="button" id="booking-save">Save enquiry</button></div><p id="booking-message" role="status" aria-live="polite"></p><nav class="booking-steps" aria-label="Package steps">${['Customer & event', 'Build package', 'Review & save'].map((s, i) => `<button type="button" data-step="${i}">${i + 1}. ${s}</button>`).join('')}</nav><div class="booking-layout"><div id="booking-panel"></div><aside class="booking-summary"><p class="booking-eyebrow">YOUR PACKAGE</p><h3 id="booking-title">New enquiry</h3><div id="booking-summary-lines"></div><div id="booking-summary-total" aria-live="polite"></div><details open><summary>Private costing · only you</summary><div id="booking-private"></div></details></aside></div><div class="booking-nav"><button id="booking-back" type="button">Previous</button><button id="booking-next" type="button">Continue</button></div><details class="booking-settings"><summary>Automatic pricing settings · owner only</summary><p>Trial vehicle fees and discount rules are starting points, not confirmed market rates. Approve these rules once before issuing final quotes. Unset space / delivery fees must be entered here; they are never guessed.</p><div id="booking-settings-fields" class="booking-grid"></div><label class="booking-check"><input id="booking-rules-approved" type="checkbox">I approve these pricing rules for new quotes</label><button type="button" id="booking-settings-save">Save pricing rules</button><p id="booking-settings-message" role="status"></p></details><details><summary>Calendar holds & upcoming bookings</summary><div id="booking-holds"></div></details>`;
-  root.addEventListener('change', changed);
+  root.addEventListener('change', event => { if (event.target.dataset.timePart) updateDateTime(event.target.closest('[data-datetime]')); else changed(event); });
   root.addEventListener('input', event => { if (event.target.dataset.field && !['checkbox'].includes(event.target.type) && !event.target.matches('select')) changed(event, false); });
   root.addEventListener('click', clicked);
   byId('booking-saved').onchange = event => load(plans.find(p => p.id === event.target.value));
@@ -114,6 +131,7 @@ function customerText(bill = false) {
   return details.join('\n');
 }
 function renderSummary() {
+  paintCalendars();
   const q = currentQuote(), intervals = E.intervals(state), overlaps = E.conflicts(intervals.reservations, [...plans.filter(p => p.schema === 2), ...published], state.id);
   byId('booking-title').textContent = state.customer.title || 'New enquiry';
   byId('booking-summary-lines').innerHTML = q.lines.length ? q.lines.map(l => `<p><span>${l.quantity} × ${esc(l.name)}</span><strong>${money(l.price == null ? null : l.price * l.quantity)}</strong></p>`).join('') : '<p>Select services to begin.</p>';
@@ -148,6 +166,8 @@ function changed(event, redraw = true) {
 function refreshLockedPayment() { if (lockedQuote) { const pay = E.quote({ ...effectiveState(), items: [] }, settings); const paid = Math.max(0, Number(state.payment.paid) || 0), refund = Math.max(0, Number(state.payment.refund) || 0); lockedQuote = { ...lockedQuote, paid, refund, balance: E.round(Math.max(0, lockedQuote.total - paid + refund)), deposit: state.payment.mode === 'full' ? lockedQuote.total : E.round(Math.min(lockedQuote.total, state.payment.depositType === 'percent' ? lockedQuote.total * Math.min(100, Number(state.payment.deposit) || 0) / 100 : Number(state.payment.deposit) || 0)), damageDeposit: pay.damageDeposit }; } }
 function clicked(event) {
   const b = event.target.closest('button'); if (!b) return;
+  if (b.dataset.monthShift) { const cal = b.closest('.booking-calendar'), [y,m] = cal.dataset.month.split('-').map(Number), date = new Date(y,m-1+Number(b.dataset.monthShift),1); cal.dataset.month = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`; paintCalendars(); return; }
+  if (b.dataset.date || b.hasAttribute('data-date-clear')) { const box = b.closest('[data-datetime]'); updateDateTime(box,b.dataset.date || ''); render(); return; }
   if (b.dataset.clockZone) { state.customer.zone = b.dataset.clockZone; message('Customer time zone updated.'); render(); }
   if (b.dataset.step) { const next = Number(b.dataset.step); if (next > 0 && !validCustomer()) return; step = next; render(); }
   if (b.dataset.addMenu) {
