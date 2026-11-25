@@ -178,7 +178,7 @@ function beginPackageImageSync(){if(stopPackageImages)return;stopPackageImages=o
 document.addEventListener("vu:package-media-ready",beginPackageImageSync);
 document.addEventListener("vu:package-image-save",async e=>{if(auth.currentUser?.uid!==OWNER_UID)return;const {key,url}=e.detail||{};if(!key||typeof url!=="string"||(url&&!/^https:\/\//i.test(url)&&!/^data:image\/jpeg;base64,/i.test(url)))return;try{await setDoc(packageImagesDoc,{images:{[key]:url}},{merge:true});document.dispatchEvent(new Event("vu:package-image-saved"))}catch(error){document.dispatchEvent(new CustomEvent("vu:package-image-error",{detail:error.message}))}});
 const packageCollection=collection(db,"packagePlans");let packagePlans=[],stopPackagePlans=null;
-function beginPackageSync(){if(stopPackagePlans)return;stopPackagePlans=onSnapshot(packageCollection,s=>{packagePlans=s.docs.map(d=>({id:d.id,...d.data()}));document.dispatchEvent(new CustomEvent("vu:packages-updated",{detail:packagePlans}));},error=>document.dispatchEvent(new CustomEvent("vu:package-error",{detail:error.message})))}
+function beginPackageSync(){if(stopPackagePlans)return;stopPackagePlans=onSnapshot(packageCollection,s=>{packagePlans=s.docs.map(d=>({id:d.id,...d.data()}));document.dispatchEvent(new CustomEvent("vu:packages-updated",{detail:packagePlans}));document.dispatchEvent(new Event("vu:booking-data-connected"));},error=>document.dispatchEvent(new CustomEvent("vu:package-error",{detail:error.message})))}
 document.addEventListener("vu:package-ready",()=>{beginPackageSync();document.dispatchEvent(new CustomEvent("vu:packages-updated",{detail:packagePlans}))});
 document.addEventListener("vu:package-save",async e=>{if(auth.currentUser?.uid!==OWNER_UID)return;const {id,fields,items,custom,updatedAt}=e.detail||{};if(!id||!fields)return;try{await setDoc(doc(db,"packagePlans",id),{fields,items,custom,updatedAt},{merge:true});document.dispatchEvent(new Event("vu:package-saved"));}catch(error){document.dispatchEvent(new CustomEvent("vu:package-error",{detail:error.message}))}});
 const tabCollection=collection(db,"customerTabs");
@@ -256,7 +256,7 @@ onAuthStateChanged(auth, async (user) => {
     appLoaded = true;
     const script = document.createElement("script");
     script.type = "module";
-    script.src = "app.js?v=20261110-menu-export17";
+    script.src = "app.js?v=20261125-package-creator";
     script.onerror = () => {
       appLoaded = false;
       const target = document.getElementById("order-categories");
@@ -264,8 +264,12 @@ onAuthStateChanged(auth, async (user) => {
       console.error("VU app.js failed to load");
     };
     document.body.append(script);
+    const planner = document.createElement("script");
+    planner.type = "module"; planner.src = "package-planner.js?v=20261125";
+    planner.onerror = () => { document.getElementById("booking-creator").textContent = "Package creator could not load. Refresh to retry."; };
+    document.body.append(planner);
   }
-  if (owner) { try { beginPricingSync(); } catch(error) { console.error("VU pricing sync failed",error); } try { beginTabSync(); } catch(error) { console.error("VU tab sync failed",error); } }
+  if (owner) { document.dispatchEvent(new Event("vu:booking-auth-ready")); try { beginPricingSync(); } catch(error) { console.error("VU pricing sync failed",error); } try { beginTabSync(); } catch(error) { console.error("VU tab sync failed",error); } }
   if (!owner && stopTabsListener) {stopTabsListener();stopTabsListener=null;tabCache=[];}
   if (!owner && stopPricingListener) { stopPricingListener(); stopPricingListener=null; sharedPrices={}; }
   if (!owner && stopPricingCostingListener) { stopPricingCostingListener(); stopPricingCostingListener=null; currentCosting=null; }
@@ -299,6 +303,7 @@ onAuthStateChanged(auth, async (user) => {
       }
     }catch(error){await signOut(auth);status.textContent="Staff access verification failed.";}
   }
+  if (!owner) { stopBookingSettings?.(); stopBookingSettings = null; stopPackagePlans?.(); stopPackagePlans = null; packagePlans = []; document.dispatchEvent(new Event("vu:booking-signed-out")); }
   if (!owner) status.textContent = "";
 }, (error) => {
   status.textContent = "Could not connect to Firebase. Check the Firebase configuration.";
@@ -568,3 +573,55 @@ async function setupCosting() {
   }
   render();
 }
+
+// Owner-only package settings and atomic resource holds. The existing owner-only
+// Firestore rule covers these collections; no public pricing/PII is published.
+let stopBookingSettings = null;
+const bookingSettingsDoc = doc(db, 'ownerSettings', 'packagePricing');
+const bookingLedgerDoc = doc(db, 'ownerSettings', 'packageReservations');
+document.addEventListener('vu:booking-ready', () => {
+  if (auth.currentUser?.uid !== OWNER_UID) return;
+  beginPackageSync();
+  if (packagePlans.length) document.dispatchEvent(new CustomEvent('vu:packages-updated', { detail: packagePlans }));
+  document.dispatchEvent(new CustomEvent('vu:customers-updated', { detail: customerCache }));
+  if (!stopBookingSettings) stopBookingSettings = onSnapshot(bookingSettingsDoc, snapshot => document.dispatchEvent(new CustomEvent('vu:booking-settings-updated', { detail: snapshot.exists() ? snapshot.data() : {} })), error => document.dispatchEvent(new CustomEvent('vu:booking-settings-result', { detail: 'Could not load pricing rules: ' + error.message })));
+});
+document.addEventListener('vu:booking-settings-save', async e => {
+  if (auth.currentUser?.uid !== OWNER_UID) return;
+  try {
+    const settings = e.detail;
+    if (!settings || typeof settings.approved !== 'boolean' || Object.entries(settings).some(([k, v]) => k !== 'approved' && v !== null && (typeof v !== 'number' || !Number.isFinite(v) || v < 0))) throw Error('Invalid pricing rules.');
+    await setDoc(bookingSettingsDoc, settings);
+    document.dispatchEvent(new CustomEvent('vu:booking-settings-result', { detail: 'Pricing rules saved privately. Existing quotes keep their saved prices.' }));
+  } catch (error) { document.dispatchEvent(new CustomEvent('vu:booking-settings-result', { detail: 'Save failed: ' + error.message })); }
+});
+document.addEventListener('vu:booking-save', async e => {
+  if (auth.currentUser?.uid !== OWNER_UID) return;
+  try {
+    const record = JSON.parse(JSON.stringify(e.detail));
+    if (record.schema !== 2 || !/^[a-zA-Z0-9-]{1,100}$/.test(record.id || '') || (!record.customer?.name && !record.customer?.title) || !Array.isArray(record.reservations) || (record.status !== 'Draft' && (!record.customer?.name || !record.customer?.phone || !record.customer?.title || !record.reservations.length))) throw Error('Booking details are incomplete.');
+    const statuses = ['Draft', 'On hold', 'Quoted', 'Confirmed', 'Completed', 'Cancelled', 'Released'];
+    if (!statuses.includes(record.status)) throw Error('Unknown booking status.');
+    const resourceNames = ['truck', 'limo', 'venue', 'premium', 'booth1', 'booth2', 'owner'];
+    for (const r of record.reservations) if (!r.start || !r.end || r.start >= r.end || !r.resources?.length || r.resources.some(key => !resourceNames.includes(key))) throw Error('Invalid service reservation.');
+    const directoryId = record.customer.save && record.customer.name && record.customer.phone ? record.customer.directoryId || 'booking-' + Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode((record.customer.name + '|' + record.customer.phone).trim().toLowerCase())))).map(x => x.toString(16).padStart(2, '0')).join('') : null;
+    const expectedRevision = record.revision;
+    await runTransaction(db, async transaction => {
+      const snapshot = await transaction.get(bookingLedgerDoc);
+      const bookings = snapshot.exists() ? snapshot.data().bookings || {} : {};
+      const active = !['Draft', 'Cancelled', 'Completed', 'Released'].includes(record.status);
+      const conflict = Object.entries(bookings).filter(([id]) => id !== record.id).find(([, booking]) => record.reservations.some(a => booking.reservations.some(b => a.start < b.end && a.end > b.start && a.resources.some(key => b.resources.includes(key)))));
+      if (active && conflict && !(record.holdOverride && record.notes?.trim())) throw Error('Another device has held these resources: ' + conflict[1].title + '. Reload the saved booking list and resolve the conflict.');
+      if (active) bookings[record.id] = { title: record.customer.title, status: record.status, reservations: record.reservations };
+      else delete bookings[record.id];
+      // Prevent silent overwrites of another device's booking edits.
+      const recordDoc = doc(db, 'packagePlans', record.id), old = await transaction.get(recordDoc);
+      if (old.exists() && expectedRevision !== old.data().revision) throw Error('This booking was edited on another device. Reopen it before saving.');
+      record.revision = Number(old.data()?.revision || 0) + 1;
+      transaction.set(bookingLedgerDoc, { bookings, updatedAt: serverTimestamp() });
+      transaction.set(recordDoc, record);
+      if (directoryId) transaction.set(doc(db, 'customers', directoryId), { name: record.customer.name, phone: record.customer.phone, consentForFutureBookings: true, updatedAt: new Date().toISOString() }, { merge: true });
+    });
+    document.dispatchEvent(new CustomEvent('vu:booking-result', { detail: { record } }));
+  } catch (error) { document.dispatchEvent(new CustomEvent('vu:booking-result', { detail: { error: 'Could not save: ' + error.message } })); }
+});
