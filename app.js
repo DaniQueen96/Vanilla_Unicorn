@@ -122,7 +122,7 @@ function updatePackageTotals(){
  set("package-price-note",(t.unpriced.length?"Missing selling prices: "+t.unpriced.join(", ")+". ":"")+"Profit is an estimate using known item costs only. "+(t.missing?t.missing+" selected item type(s) have unknown costs. ":"")+"Van and limo purchase prices are not charged to customers and are excluded from event costs.");
  const summary=$("vu-pkg-summary-items");if(summary){summary.replaceChildren();for(const x of t.all)summary.append(el("p",null,x.quantity+" × "+x.name+" · "+cash(x.price*x.quantity)));if(!t.all.length)summary.append(el("p","muted","No items selected yet."));}
  const vanCost=pkgNum("vu-pkg-van-cost"),vanNet=pkgNum("vu-pkg-van-fee")-pkgNum("vu-pkg-van-expenses"),limoNet=pkgNum("vu-pkg-limo-fee")-pkgNum("vu-pkg-limo-expenses");
- set("vu-pkg-limo-break-even",t.limo?"Limo purchase: $69,000 · "+(limoNet>0?"About "+Math.ceil(69000/limoNet)+" hires to recover purchase price at this net hire contribution (excluding other costs).":"Enter a hire fee above running costs to estimate purchase payback."):"Limo purchase budget: $69,000. Select hire to calculate.");
+ set("vu-pkg-limo-break-even","Purchase-cost recovery uses your private vehicle / package settings.");
  const review=$("vu-pkg-review");if(review){review.replaceChildren();for(const x of t.all)review.append(el("p",null,x.name+" × "+x.quantity+" = "+cash(x.price*x.quantity)));review.append(el("strong",null,t.unpriced.length?"Customer quote incomplete — missing prices: "+t.unpriced.join(", "):"Customer quote: "+cash(t.total)));review.append(el("p","muted","Occasion: "+($("vu-pkg-occasion")?.value||"")+" · Guests: "+guests+" · Status: "+($("vu-pkg-status")?.value||"Draft")));}
 }
 let pkgRecipeUnitCost=null;
