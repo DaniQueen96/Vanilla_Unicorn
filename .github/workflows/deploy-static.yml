@@ -60,7 +60,7 @@ jobs:
                 return;
               }
               if (['deployment_failed', 'deployment_perms_error', 'deployment_content_failed', 'deployment_cancelled', 'deployment_lost'].includes(result.data.status)) {
-                throw new Error('Pages deployment failed: ' + result.data.status);
+                throw new Error('Pages deployment failed: ' + result.data.status + ' — ' + JSON.stringify(result.data.error || result.data.message || 'No additional error supplied by GitHub'));
               }
               core.info('Pages deployment: ' + result.data.status);
               await new Promise(resolve => setTimeout(resolve, 5000));
