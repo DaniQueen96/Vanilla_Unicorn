@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 concurrency:
@@ -25,6 +26,24 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
+      - name: Wait for uploaded artifact metadata
+        uses: actions/github-script@v7
+        with:
+          script: |
+            for (let attempt = 0; attempt < 12; attempt++) {
+              const result = await github.rest.actions.listWorkflowRunArtifacts({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: context.runId
+              });
+              if (result.data.artifacts.some(a => a.name === 'github-pages' && !a.expired)) {
+                core.info('Pages artifact is available for deployment.');
+                return;
+              }
+              core.info('Waiting for uploaded artifact metadata.');
+              await new Promise(resolve => setTimeout(resolve, 5000));
+            }
+            core.setFailed('The uploaded Pages artifact is still not visible.');
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
