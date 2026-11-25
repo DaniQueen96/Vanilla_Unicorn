@@ -1,0 +1,20 @@
+name: Package creator checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        run: |
+          node --check package-engine.js
+          node --check package-planner.js
+          node --check app.js
+          node --check auth.js
+      - name: Check quotes, time zones and persistence
+        run: node --test tests/*.test.cjs
