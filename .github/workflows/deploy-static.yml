@@ -23,27 +23,46 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static website
+        id: upload
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
-      - name: Wait for uploaded artifact metadata
+      - name: Deploy uploaded artifact through the Pages API
+        id: deployment
         uses: actions/github-script@v7
         with:
           script: |
+            // Use the REST artifact list: the artifact-results service can lag
+            // behind an upload even when the REST metadata is already available.
+            let artifact;
             for (let attempt = 0; attempt < 12; attempt++) {
               const result = await github.rest.actions.listWorkflowRunArtifacts({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                run_id: context.runId
+                owner: context.repo.owner, repo: context.repo.repo, run_id: context.runId
               });
-              if (result.data.artifacts.some(a => a.name === 'github-pages' && !a.expired)) {
-                core.info('Pages artifact is available for deployment.');
-                return;
-              }
-              core.info('Waiting for uploaded artifact metadata.');
+              artifact = result.data.artifacts.find(a => a.name === 'github-pages' && !a.expired);
+              if (artifact) break;
               await new Promise(resolve => setTimeout(resolve, 5000));
             }
-            core.setFailed('The uploaded Pages artifact is still not visible.');
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+            if (!artifact) throw new Error('Uploaded Pages artifact is not visible.');
+            const token = await core.getIDToken();
+            const response = await github.request('POST /repos/{owner}/{repo}/pages/deployments', {
+              owner: context.repo.owner, repo: context.repo.repo,
+              artifact_id: artifact.id, pages_build_version: context.sha, oidc_token: token
+            });
+            core.setOutput('page_url', response.data.page_url);
+            const deploymentId = response.data.id || context.sha;
+            for (let attempt = 0; attempt < 60; attempt++) {
+              const result = await github.request('GET /repos/{owner}/{repo}/pages/deployments/{deployment_id}', {
+                owner: context.repo.owner, repo: context.repo.repo, deployment_id: deploymentId
+              });
+              if (result.data.status === 'succeed') {
+                core.info('Pages deployment succeeded.');
+                return;
+              }
+              if (!['queued', 'pending', 'in_progress', 'deploying', 'deployment_in_progress', 'waiting', 'updating_pages'].includes(result.data.status)) {
+                throw new Error('Pages deployment failed: ' + result.data.status);
+              }
+              core.info('Pages deployment: ' + result.data.status);
+              await new Promise(resolve => setTimeout(resolve, 5000));
+            }
+            throw new Error('Pages deployment did not complete within five minutes.');
