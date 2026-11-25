@@ -50,11 +50,25 @@ function render() {
   byId('booking-back').disabled = step === 0; byId('booking-next').hidden = step === 2;
   byId('booking-panel').innerHTML = step === 0 ? customerPanel() : step === 1 ? buildPanel() : reviewPanel();
   byId('booking-save').textContent = saving ? 'Saving…' : 'Save enquiry / booking'; byId('booking-save').disabled = saving; byId('booking-draft').disabled = saving;
-  renderSummary(); renderHolds(); renderSaved();
+  renderSummary(); renderHolds(); renderSaved(); updateLiveClocks();
+}
+const clockZones = [['Europe/London', 'UK'], ['Europe/Helsinki', 'Finland'], ['America/New_York', 'US Eastern'], ['America/Chicago', 'US Central'], ['America/Denver', 'US Mountain'], ['America/Los_Angeles', 'US Pacific'], ['Australia/Sydney', 'Sydney'], ['UTC', 'UTC']];
+function clockText(zone, now = new Date()) {
+  return new Intl.DateTimeFormat('en-GB', { timeZone: zone, weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZoneName: 'short' }).format(now);
+}
+function zoneLabel(zone) { return clockZones.find(([z]) => z === zone)?.[1] || zone.replace(/_/g, ' '); }
+function updateLiveClocks() {
+  const now = new Date();
+  for (const button of root.querySelectorAll('[data-clock-zone]')) {
+    button.setAttribute('aria-pressed', String(button.dataset.clockZone === state.customer.zone));
+    button.querySelector('time').textContent = clockText(button.dataset.clockZone, now);
+  }
+  const picker = byId('booking-zone-picker');
+  if (picker && document.activeElement !== picker) for (const option of picker.options) option.textContent = zoneLabel(option.value) + ' — ' + clockText(option.value, now);
 }
 function customerPanel() {
   const zones = [...new Set(['Europe/London', 'UTC', 'Europe/Helsinki', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Australia/Sydney', ...(Intl.supportedValuesOf?.('timeZone') || [])])];
-  return `<div class="booking-customer-form"><section class="booking-form-card"><div class="booking-card-heading"><h3>Customer details</h3><p>Who are we arranging this for?</p></div>${customers.length ? `<details class="booking-returning"><summary>Find a returning customer</summary><label>Saved customer<select id="booking-customer"><option value="">Choose a customer</option>${customers.map(c => `<option value="${esc(c.id)}">${esc(c.name)} · ${esc(c.phone)}</option>`).join('')}</select></label></details>` : ''}<div class="booking-grid">${field('Customer name', 'customer.name', 'text', 'autocomplete="off" placeholder="Full name"')}${field('In-city phone number', 'customer.phone', 'tel', 'placeholder="Phone number"')}</div>${check('Save their details for future bookings · with their permission', 'customer.save')}</section><section class="booking-form-card"><div class="booking-card-heading"><h3>Event details</h3><p>The name below will appear on your calendar.</p></div>${field('Event name', 'customer.title', 'text', 'placeholder="e.g. Birthday party for Alex"')}<div class="booking-grid booking-event-times">${field('Starts', 'customer.start', 'datetime-local')}${field('Ends / return time', 'customer.end', 'datetime-local')}</div><label class="booking-zone-label">Customer time zone<input data-field="customer.zone" list="booking-zones" value="${esc(state.customer.zone)}" autocomplete="off" placeholder="Search a city or time zone"><datalist id="booking-zones">${zones.map(z => `<option value="${z}"></option>`).join('')}</datalist><span class="booking-field-hint">Use the customer's local time above. Your UK time converts automatically.</span></label><div id="booking-clock-choice" hidden>${select('This time occurs twice when the clocks change', 'customer.occurrence', [['earlier', 'First occurrence'], ['later', 'Second occurrence']])}</div><details id="booking-time-conversions" class="booking-time-conversions" hidden><summary>View times in other time zones</summary><div id="booking-times" class="booking-times"></div></details></section></div>`;
+  return `<div class="booking-customer-form"><section class="booking-form-card"><div class="booking-card-heading"><h3>Customer details</h3><p>Who are we arranging this for?</p></div>${customers.length ? `<details class="booking-returning"><summary>Find a returning customer</summary><label>Saved customer<select id="booking-customer"><option value="">Choose a customer</option>${customers.map(c => `<option value="${esc(c.id)}">${esc(c.name)} · ${esc(c.phone)}</option>`).join('')}</select></label></details>` : ''}<div class="booking-grid">${field('Customer name', 'customer.name', 'text', 'autocomplete="off" placeholder="Full name"')}${field('In-city phone number', 'customer.phone', 'tel', 'placeholder="Phone number"')}</div>${check('Save their details for future bookings · with their permission', 'customer.save')}</section><section class="booking-form-card"><div class="booking-card-heading"><h3>Event details</h3><p>The name below will appear on your calendar.</p></div>${field('Event name', 'customer.title', 'text', 'placeholder="e.g. Birthday party for Alex"')}<div class="booking-grid booking-event-times">${field('Starts', 'customer.start', 'datetime-local')}${field('Ends / return time', 'customer.end', 'datetime-local')}</div><div class="booking-world-times"><h4>Current local times</h4><p class="booking-field-hint">These clocks show the time right now. Click a zone to use it for this customer.</p><div class="booking-clock-grid">${clockZones.map(([z, label]) => `<button type="button" data-clock-zone="${z}" aria-pressed="${z === state.customer.zone}"><span>${label}</span><time>${esc(clockText(z))}</time></button>`).join('')}</div></div><label class="booking-zone-label">Customer time zone<select id="booking-zone-picker" data-field="customer.zone">${zones.map(z => `<option value="${z}" ${z === state.customer.zone ? 'selected' : ''}>${esc(zoneLabel(z))} — ${esc(clockText(z))}</option>`).join('')}</select><span class="booking-field-hint">Choose their zone, then enter the booking in their local time. Your UK booking time converts automatically.</span></label><div id="booking-clock-choice" hidden>${select('This time occurs twice when the clocks change', 'customer.occurrence', [['earlier', 'First occurrence'], ['later', 'Second occurrence']])}</div><details id="booking-time-conversions" class="booking-time-conversions" hidden><summary>View times in other time zones</summary><div id="booking-times" class="booking-times"></div></details></section></div>`;
 }
 function menu(key) {
   const selected = state.items.filter(i => i.service === key);
@@ -134,6 +148,7 @@ function changed(event, redraw = true) {
 function refreshLockedPayment() { if (lockedQuote) { const pay = E.quote({ ...effectiveState(), items: [] }, settings); const paid = Math.max(0, Number(state.payment.paid) || 0), refund = Math.max(0, Number(state.payment.refund) || 0); lockedQuote = { ...lockedQuote, paid, refund, balance: E.round(Math.max(0, lockedQuote.total - paid + refund)), deposit: state.payment.mode === 'full' ? lockedQuote.total : E.round(Math.min(lockedQuote.total, state.payment.depositType === 'percent' ? lockedQuote.total * Math.min(100, Number(state.payment.deposit) || 0) / 100 : Number(state.payment.deposit) || 0)), damageDeposit: pay.damageDeposit }; } }
 function clicked(event) {
   const b = event.target.closest('button'); if (!b) return;
+  if (b.dataset.clockZone) { state.customer.zone = b.dataset.clockZone; message('Customer time zone updated.'); render(); }
   if (b.dataset.step) { const next = Number(b.dataset.step); if (next > 0 && !validCustomer()) return; step = next; render(); }
   if (b.dataset.addMenu) {
     const service = b.dataset.addMenu, selected = byId('booking-menu-' + service).value, quantity = Number(byId('booking-qty-' + service).value);
@@ -212,6 +227,8 @@ function buildCatalogue(data) {
 let publicData;
 if (root) {
   base();
+  let clockMinute = Math.floor(Date.now() / 60000);
+  setInterval(() => { const minute = Math.floor(Date.now() / 60000); if (minute !== clockMinute) { clockMinute = minute; updateLiveClocks(); } }, 1000);
   document.addEventListener('vu:booking-signed-out', () => { state = fresh(); lockedQuote = null; plans = []; customers = []; prices = {}; costing = null; ready = false; render(); });
   document.addEventListener('vu:prices-updated', e => { prices = e.detail || {}; if (publicData) buildCatalogue(publicData); });
   document.addEventListener('vu:costing-updated', e => { costing = e.detail; if (publicData) buildCatalogue(publicData); });
