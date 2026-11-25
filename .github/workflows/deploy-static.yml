@@ -59,7 +59,7 @@ jobs:
                 core.info('Pages deployment succeeded.');
                 return;
               }
-              if (!['queued', 'pending', 'in_progress', 'deploying', 'deployment_in_progress', 'waiting', 'updating_pages'].includes(result.data.status)) {
+              if (['deployment_failed', 'deployment_perms_error', 'deployment_content_failed', 'deployment_cancelled', 'deployment_lost'].includes(result.data.status)) {
                 throw new Error('Pages deployment failed: ' + result.data.status);
               }
               core.info('Pages deployment: ' + result.data.status);
