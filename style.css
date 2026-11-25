@@ -55,10 +55,10 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 
 /* Vanilla Unicorn owner management suite — November redesign */
 #protected-app main{max-width:1500px;display:grid;grid-template-columns:235px minmax(0,1fr);gap:32px;align-items:start;padding-top:28px}
-#protected-app nav{position:sticky;top:20px;display:flex;flex-direction:column;gap:5px;padding:16px;background:linear-gradient(160deg,#241426,#160e1a);border:1px solid #50304a;border-radius:20px;max-height:calc(100vh - 40px);overflow:auto}
-#protected-app nav .nav-heading{font-size:10px;letter-spacing:2.5px;color:#d78cbd;font-weight:800;padding:10px 12px 14px}
-#protected-app nav button{border:0;background:transparent;text-align:left;padding:12px 13px;border-radius:10px;font-weight:600;color:#d6bfd0}
-#protected-app nav button:hover,#protected-app nav button.active{background:#733054;color:white;box-shadow:inset 3px 0 #ffa7d4}
+#protected-app > main > nav{position:sticky;top:20px;display:flex;flex-direction:column;gap:5px;padding:16px;background:linear-gradient(160deg,#241426,#160e1a);border:1px solid #50304a;border-radius:20px;max-height:calc(100vh - 40px);overflow:auto}
+#protected-app > main > nav .nav-heading{font-size:10px;letter-spacing:2.5px;color:#d78cbd;font-weight:800;padding:10px 12px 14px}
+#protected-app > main > nav button{border:0;background:transparent;text-align:left;padding:12px 13px;border-radius:10px;font-weight:600;color:#d6bfd0}
+#protected-app > main > nav button:hover,#protected-app > main > nav button.active{background:#733054;color:white;box-shadow:inset 3px 0 #ffa7d4}
 #protected-app .workspace{min-width:0}
 #protected-app .view{max-width:1100px;min-width:0}
 #protected-app .view.hidden{display:none}
@@ -90,7 +90,7 @@ textarea{width:100%;font:inherit;background:#211722;color:white;border:1px solid
 #costing-recipes .cocktail-pricing strong{display:block;color:#ffd0e8;line-height:1.6}
 #costing-recipes .cocktail-pricing input{accent-color:#f08abf}
 #packages #package-options,#drinks #drink-list{grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
-@media(max-width:800px){#protected-app main{display:block;padding:12px 16px}#protected-app nav{position:static;display:flex;flex-direction:row;flex-wrap:nowrap;overflow:auto;max-height:none;margin-bottom:18px;padding:9px;border-radius:13px}#protected-app nav button{white-space:nowrap}#protected-app nav .nav-heading{display:none}#costing-recipes{grid-template-columns:1fr}}
+@media(max-width:800px){#protected-app main{display:block;padding:12px 16px}#protected-app > main > nav{position:static;display:flex;flex-direction:row;flex-wrap:nowrap;overflow:auto;max-height:none;margin-bottom:18px;padding:9px;border-radius:13px}#protected-app > main > nav button{white-space:nowrap}#protected-app > main > nav .nav-heading{display:none}#costing-recipes{grid-template-columns:1fr}}
 
 /* Visual cocktail recipe gallery */
 .vu-recipe-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px;margin:22px 0 34px;align-items:stretch}
