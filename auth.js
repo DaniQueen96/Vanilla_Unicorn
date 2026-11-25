@@ -265,7 +265,7 @@ onAuthStateChanged(auth, async (user) => {
     };
     document.body.append(script);
     const planner = document.createElement("script");
-    planner.type = "module"; planner.src = "package-planner.js?v=20261125";
+    planner.type = "module"; planner.src = "package-planner.js?v=20261125-layout2";
     planner.onerror = () => { document.getElementById("booking-creator").textContent = "Package creator could not load. Refresh to retry."; };
     document.body.append(planner);
   }
